@@ -1,0 +1,423 @@
+import { useState } from 'react';
+import {
+  UserGroupIcon,
+  CurrencyDollarIcon,
+  ChartBarIcon,
+  TrendingUpIcon,
+  DocumentTextIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  CalculatorIcon,
+  BanknotesIcon,
+  QrCodeIcon,
+  LinkIcon,
+  ShareIcon,
+  CalendarIcon
+} from '@heroicons/react/24/outline';
+import { Tab } from '@headlessui/react';
+
+// Sample data - replace with API calls in production
+const stats = [
+  { name: 'Total Referrals', value: '89', icon: UserGroupIcon, change: '+15', changeType: 'increase' },
+  { name: 'Total Commission', value: '$18,750', icon: CurrencyDollarIcon, change: '+22%', changeType: 'increase' },
+  { name: 'Active Trainees', value: '45', icon: UserGroupIcon, change: '+6', changeType: 'increase' },
+  { name: 'Completed Trainees', value: '28', icon: CheckCircleIcon, change: '+12', changeType: 'increase' },
+  { name: 'Commissions Earned', value: '$15,300', icon: CurrencyDollarIcon, change: '+18%', changeType: 'increase' },
+  { name: 'Commissions Paid', value: '$12,800', icon: BanknotesIcon,
+  QrCodeIcon,
+  LinkIcon,
+  ShareIcon, change: '+25%', changeType: 'increase' },
+];
+
+const recentActivities = [
+  { id: 1, type: 'referral', message: 'New referral completed training - John Doe', time: '2 hours ago', amount: '$800', program: 'Caregiving Program' },
+  { id: 2, type: 'commission', message: 'Commission paid for 3 successful referrals', time: '1 day ago', count: 3, amount: '$2,400' },
+  { id: 3, type: 'training', message: '5 referred candidates started training programs', time: '2 days ago', count: 5, program: 'Construction Skills' },
+  { id: 4, type: 'certificate', message: 'Referral certificates issued for 2 candidates', time: '3 days ago', count: 2, status: 'Completed' },
+];
+
+const myCandidates = [
+  {
+    id: 1,
+    name: 'John Doe',
+    broker: 'Agent Smith',
+    placement: 'CarePlus Healthcare',
+    commission: '$800',
+    status: 'Placed',
+    placementDate: '2024-01-25',
+    paymentStatus: 'Received'
+  },
+  {
+    id: 2,
+    name: 'Sarah Johnson',
+    broker: 'Agent Smith',
+    placement: 'BuildRight Construction',
+    commission: '$1,200',
+    status: 'Placed',
+    placementDate: '2024-01-20',
+    paymentStatus: 'Received'
+  },
+  {
+    id: 3,
+    name: 'Michael Brown',
+    broker: 'Agent Johnson',
+    placement: 'Premier Hotels Group',
+    commission: '$600',
+    status: 'Placed',
+    placementDate: '2024-01-18',
+    paymentStatus: 'Pending'
+  },
+  {
+    id: 4,
+    name: 'Emma Wilson',
+    broker: 'Agent Davis',
+    placement: 'City Hospital',
+    commission: '$900',
+    status: 'Under Review',
+    placementDate: '2024-01-22',
+    paymentStatus: 'Pending'
+  }
+];
+
+const commissionBreakdown = [
+  { month: 'Jan 2024', amount: '$15,200', deals: 12, avgCommission: '$1,267' },
+  { month: 'Dec 2023', amount: '$12,800', deals: 10, avgCommission: '$1,280' },
+  { month: 'Nov 2023', amount: '$14,500', deals: 11, avgCommission: '$1,318' },
+  { month: 'Oct 2023', amount: '$11,900', deals: 9, avgCommission: '$1,322' },
+];
+
+const BrokerDashboard = () => {
+  const [activeTab, setActiveTab] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredCandidates = myCandidates.filter(candidate =>
+    candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    candidate.broker.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+      {/* Welcome Banner */}
+      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome back, Broker Martinez!</h1>
+        <p className="text-gray-600 mt-1">Here's your commission and placement performance overview</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        {stats.map((stat) => (
+          <div key={stat.name} className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <stat.icon className="h-6 w-6 text-gray-400" aria-hidden="true" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">{stat.name}</dt>
+                    <dd>
+                      <div className="text-lg font-medium text-gray-900">{stat.value}</div>
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-5 py-3">
+              <div className="text-sm">
+                <span className={`font-medium ${
+                  stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {stat.change}
+                </span>{' '}
+                <span className="text-gray-500">vs last month</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Main Content */}
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <Tab.Group selectedIndex={activeTab} onChange={setActiveTab}>
+          <Tab.List className="border-b border-gray-200">
+            <div className="px-6">
+              <nav className="-mb-px flex space-x-8">
+                <Tab
+                  className={({ selected }) =>
+                    `${
+                      selected
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`
+                  }
+                >
+                  Overview
+                </Tab>
+                <Tab
+                  className={({ selected }) =>
+                    `${
+                      selected
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`
+                  }
+                >
+                  My Candidates
+                </Tab>
+                <Tab
+                  className={({ selected }) =>
+                    `${
+                      selected
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`
+                  }
+                >
+                  Commission Tracking
+                </Tab>
+                <Tab
+                  className={({ selected }) =>
+                    `${
+                      selected
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`
+                  }
+                >
+                  Payments
+                </Tab>
+              </nav>
+            </div>
+          </Tab.List>
+          <Tab.Panels className="p-6">
+            <Tab.Panel>
+              {/* Overview Tab */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Activities</h2>
+                  <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                    <ul className="divide-y divide-gray-200">
+                      {recentActivities.map((activity) => (
+                        <li key={activity.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                          <div className="flex items-center">
+                            <div className="min-w-0 flex-1 flex items-center">
+                              <div className="flex-shrink-0">
+                                {activity.type === 'commission' && (
+                                  <CurrencyDollarIcon className="h-5 w-5 text-green-500" />
+                                )}
+                                {activity.type === 'deal' && (
+                                  <DocumentTextIcon className="h-5 w-5 text-blue-500" />
+                                )}
+                                {activity.type === 'payment' && (
+                                  <BanknotesIcon className="h-5 w-5 text-purple-500" />
+                                )}
+                                {activity.type === 'negotiation' && (
+                                  <CalculatorIcon className="h-5 w-5 text-orange-500" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1 px-4">
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {activity.message}
+                                  </p>
+                                  {activity.amount && (
+                                    <p className="mt-1 text-sm text-green-600 font-medium">Amount: {activity.amount}</p>
+                                  )}
+                                  {activity.company && (
+                                    <p className="mt-1 text-sm text-gray-500">Company: {activity.company}</p>
+                                  )}
+                                  {activity.candidates && (
+                                    <p className="mt-1 text-sm text-blue-600 font-medium">{activity.candidates} candidates • {activity.amount}</p>
+                                  )}
+                                  {activity.status && (
+                                    <p className="mt-1 text-sm text-yellow-600 font-medium">Status: {activity.status}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500">{activity.time}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-lg font-medium text-gray-900 mb-4">Performance Metrics</h2>
+                  <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                    <div className="px-4 py-5 sm:p-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">Success Rate</span>
+                          <span className="text-lg font-semibold text-green-600">85%</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">Avg Commission/Deal</span>
+                          <span className="text-lg font-semibold text-gray-900">$1,456</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">Top Sector</span>
+                          <span className="text-lg font-semibold text-gray-900">Healthcare</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">Payment Rate</span>
+                          <span className="text-lg font-semibold text-gray-900">92%</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">Monthly Target</span>
+                          <span className="text-lg font-semibold text-gray-900">$20,000</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Tab.Panel>
+            <Tab.Panel>
+              {/* My Candidates Tab */}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium text-gray-900">My Candidates</h2>
+                <div className="relative rounded-md shadow-sm">
+                  <input
+                    type="text"
+                    placeholder="Search candidates..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                  />
+                </div>
+              </div>
+              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <ul className="divide-y divide-gray-200">
+                  {filteredCandidates.map((candidate) => (
+                    <li key={candidate.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center">
+                            <p className="text-lg font-medium text-gray-900 truncate">{candidate.name}</p>
+                            <span className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              candidate.status === 'Placed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {candidate.status}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-center text-sm text-gray-500">
+                            <UserGroupIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
+                            Agent: {candidate.broker}
+                          </div>
+                          <div className="mt-1 flex items-center text-sm text-gray-500">
+                            <DocumentTextIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
+                            {candidate.placement}
+                          </div>
+                          <div className="mt-1 flex items-center text-sm text-gray-500">
+                            <CalendarIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
+                            Placed on {new Date(candidate.placementDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-gray-900">Commission</p>
+                            <p className="text-lg font-semibold text-green-600">{candidate.commission}</p>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              candidate.paymentStatus === 'Received' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {candidate.paymentStatus}
+                            </span>
+                          </div>
+                          <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Tab.Panel>
+            <Tab.Panel>
+              {/* Commission Tracking Tab */}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium text-gray-900">Commission Tracking</h2>
+                <button
+                  type="button"
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <CalculatorIcon className="-ml-1 mr-2 h-5 w-5" />
+                  Generate Report
+                </button>
+              </div>
+              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="px-4 py-5 sm:p-6">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Month
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total Commission
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Deals Closed
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Avg Commission
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {commissionBreakdown.map((record, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {record.month}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
+                              {record.amount}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {record.deals}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {record.avgCommission}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </Tab.Panel>
+            <Tab.Panel>
+              {/* Payments Tab */}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium text-gray-900">Payment Management</h2>
+                <button
+                  type="button"
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <BanknotesIcon className="-ml-1 mr-2 h-5 w-5" />
+                  Request Payment
+                </button>
+              </div>
+              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="px-4 py-5 sm:p-6 text-center text-gray-500">
+                  <BanknotesIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">Payment Dashboard</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Payment tracking and management interface will be implemented here.
+                  </p>
+                </div>
+              </div>
+            </Tab.Panel>
+          </Tab.Panels>
+        </Tab.Group>
+      </div>
+    </div>
+  );
+};
+
+export default BrokerDashboard;

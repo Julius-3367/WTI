@@ -1,0 +1,112 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Prisma
+prisma/migrations/*/migration.tmp
+prisma/migrations/*/migration.sql
+!prisma/migrations/*/migration.sql
+
+# Next.js
+.next/
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local development
+.env.local
+.env.development.local
+
+# Production
+.env.production.local
+
+# Vercel
+.vercel
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Database
+*.sqlite
+*.sqlite3
+
+# Build output
+.next/
+out/
+
+# Misc
+.DS_Store
+*.pem
+
+# Testing
+/coverage
+
+# Local env files
+.env*.local
+
+# Prisma
+/prisma/migrations/**/migration.sql
+!prisma/migrations/*/migration.sql
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*

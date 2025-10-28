@@ -1,0 +1,350 @@
+import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { registerUser } from '../authThunks';
+import {
+  Container,
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Link,
+  Paper,
+  Grid,
+  Avatar,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+  Divider,
+} from '@mui/material';
+import {
+  PersonAdd as PersonAddIcon,
+  Visibility,
+  VisibilityOff,
+  Google,
+  Facebook,
+  Twitter,
+} from '@mui/icons-material';
+
+const Register = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { status, error } = useSelector((state) => state.auth);
+  const loading = status === 'loading';
+  
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    userType: 'candidate',
+    showPassword: false,
+    showConfirmPassword: false,
+  });
+
+  const [errors, setErrors] = useState({});
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: '',
+      });
+    }
+  };
+
+  const handleClickShowPassword = (field) => {
+    setFormData({
+      ...formData,
+      [field]: !formData[field],
+    });
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+    
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    }
+    
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid';
+    }
+    
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    try {
+      await dispatch(registerUser({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        userType: formData.userType,
+      })).unwrap();
+      
+      // Redirect to verification or dashboard based on your flow
+      navigate('/verify-email');
+    } catch (error) {
+      console.error('Registration failed:', error);
+    }
+  };
+
+  const handleSocialRegister = (provider) => {
+    // Handle social registration logic
+    console.log(`Registering with ${provider}`);
+  };
+
+  return (
+    <Container component="main" maxWidth="sm">
+      <Box
+        sx={{
+          marginTop: 4,
+          marginBottom: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
+          <PersonAddIcon />
+        </Avatar>
+        <Typography component="h1" variant="h5">
+          Create an account
+        </Typography>
+        
+        {error && (
+          <Alert severity="error" sx={{ width: '100%', mt: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Paper elevation={3} sx={{ p: 4, mt: 3, width: '100%' }}>
+          <Box component="form" onSubmit={handleSubmit} noValidate>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  autoComplete="given-name"
+                  name="firstName"
+                  required
+                  fullWidth
+                  id="firstName"
+                  label="First Name"
+                  autoFocus
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  error={!!errors.firstName}
+                  helperText={errors.firstName}
+                  disabled={loading}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  id="lastName"
+                  label="Last Name"
+                  name="lastName"
+                  autoComplete="family-name"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  error={!!errors.lastName}
+                  helperText={errors.lastName}
+                  disabled={loading}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  required
+                  fullWidth
+                  id="email"
+                  label="Email Address"
+                  name="email"
+                  autoComplete="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  error={!!errors.email}
+                  helperText={errors.email}
+                  disabled={loading}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  name="password"
+                  label="Password"
+                  type={formData.showPassword ? 'text' : 'password'}
+                  id="password"
+                  autoComplete="new-password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  error={!!errors.password}
+                  helperText={errors.password}
+                  disabled={loading}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={() => handleClickShowPassword('showPassword')}
+                          edge="end"
+                        >
+                          {formData.showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  name="confirmPassword"
+                  label="Confirm Password"
+                  type={formData.showConfirmPassword ? 'text' : 'password'}
+                  id="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  error={!!errors.confirmPassword}
+                  helperText={errors.confirmPassword}
+                  disabled={loading}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle confirm password visibility"
+                          onClick={() => handleClickShowPassword('showConfirmPassword')}
+                          edge="end"
+                        >
+                          {formData.showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth required error={!!errors.userType} disabled={loading}>
+                  <InputLabel id="user-type-label">I am a</InputLabel>
+                  <Select
+                    labelId="user-type-label"
+                    id="userType"
+                    name="userType"
+                    value={formData.userType}
+                    label="I am a"
+                    onChange={handleChange}
+                  >
+                    <MenuItem value="candidate">Job Seeker</MenuItem>
+                    <MenuItem value="employer">Employer</MenuItem>
+                    <MenuItem value="training">Training Provider</MenuItem>
+                  </Select>
+                  {errors.userType && (
+                    <FormHelperText>{errors.userType}</FormHelperText>
+                  )}
+                </FormControl>
+              </Grid>
+            </Grid>
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} /> : 'Create Account'}
+            </Button>
+            
+            <Divider sx={{ my: 2 }}>OR</Divider>
+            
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} sm={4}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<Google />}
+                  onClick={() => handleSocialRegister('google')}
+                  disabled={loading}
+                >
+                  Google
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<Facebook />}
+                  onClick={() => handleSocialRegister('facebook')}
+                  disabled={loading}
+                >
+                  Facebook
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<Twitter />}
+                  onClick={() => handleSocialRegister('twitter')}
+                  disabled={loading}
+                >
+                  Twitter
+                </Button>
+              </Grid>
+            </Grid>
+            
+            <Grid container justifyContent="flex-end">
+              <Grid item>
+                <Link component={RouterLink} to="/login" variant="body2">
+                  Already have an account? Sign in
+                </Link>
+              </Grid>
+            </Grid>
+          </Box>
+        </Paper>
+      </Box>
+    </Container>
+  );
+};
+
+export default Register;
