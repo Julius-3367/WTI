@@ -54,7 +54,7 @@
   <div>
     <h3 style="color: #1976d2; border-bottom: 1px solid #e0e0e0; padding-bottom: 0.5em;">Frontend</h3>
     <ul style="list-style-type: none; padding: 0;">
-      <li>• React.js with Vite</li>
+      <li>• React 18 with Vite</li>
       <li>• Material-UI (MUI) v5</li>
       <li>• React Router v6</li>
       <li>• Context API for state management</li>
@@ -159,7 +159,7 @@ For any questions or feedback, please contact us at [your-email@example.com](mai
 ### Frontend
 - **Framework**: React.js 18
 - **Build Tool**: Vite
-- **Styling**: TailwindCSS
+- **Styling**: Material-UI (MUI) v5
 - **Routing**: React Router v6
 - **State Management**: Context API
 - **Forms**: React Hook Form + Yup validation
