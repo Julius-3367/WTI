@@ -95,7 +95,8 @@ const CertificateList = () => {
   const fetchCourses = async () => {
     try {
       const response = await adminService.getAllCourses();
-      setCourses(response.data?.data || response.data || []);
+      // backend returns { data: { courses: [...] } }
+      setCourses(response.data?.data?.courses || response.data || []);
     } catch (err) {
       console.error('Failed to fetch courses:', err);
       setCourses([]);
@@ -387,12 +388,22 @@ const CertificateList = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      {format(new Date(certificate.issueDate), 'MMM dd, yyyy')}
+                      {certificate.issueDate ? (() => {
+                        try {
+                          return format(new Date(certificate.issueDate), 'MMM dd, yyyy');
+                        } catch (e) {
+                          return String(certificate.issueDate);
+                        }
+                      })() : '—'}
                     </TableCell>
                     <TableCell>
-                      {certificate.expiryDate
-                        ? format(new Date(certificate.expiryDate), 'MMM dd, yyyy')
-                        : 'No Expiry'}
+                      {certificate.expiryDate ? (() => {
+                        try {
+                          return format(new Date(certificate.expiryDate), 'MMM dd, yyyy');
+                        } catch (e) {
+                          return String(certificate.expiryDate);
+                        }
+                      })() : 'No Expiry'}
                     </TableCell>
                     <TableCell>
                       <Chip

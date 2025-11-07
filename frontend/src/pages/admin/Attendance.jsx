@@ -93,7 +93,8 @@ const Attendance = () => {
   const fetchCourses = async () => {
     try {
       const response = await adminService.getAllCourses();
-      setCourses(response.data.data || []);
+      // backend returns { success: true, data: { courses: [...], total, ... }, pagination }
+      setCourses(response.data.data?.courses || []);
     } catch (error) {
       showSnackbar('Failed to load courses', 'error');
     }

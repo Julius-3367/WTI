@@ -1,8 +1,12 @@
 import axios from 'axios';
 
 // Create axios instance with default config
+// Note: backend routes are mounted under `/api` (see backend/src/app.js),
+// so default baseURL should include the `/api` prefix to avoid 404s like
+// "Route not found" when frontend calls `/auth/login` (which becomes `/auth/login`
+// without `/api`).
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

@@ -99,8 +99,9 @@ const CertificateApprovalQueue = () => {
   const fetchCourses = async () => {
     try {
       const response = await adminService.getAllCourses();
-      const data = response.data?.data || response.data || [];
-      setCourses(Array.isArray(data) ? data : []);
+      // backend returns { data: { courses: [...] } }
+      const coursesData = response.data?.data?.courses || response.data || [];
+      setCourses(Array.isArray(coursesData) ? coursesData : []);
     } catch (err) {
       console.error('Failed to fetch courses:', err);
       setCourses([]);

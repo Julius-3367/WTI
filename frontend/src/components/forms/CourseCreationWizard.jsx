@@ -102,7 +102,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
     maxCapacity: '',
     minCapacity: '',
     courseFee: '',
-    currency: 'USD',
+  currency: 'KES',
     registrationDeadline: null,
     allowWaitlist: false,
     

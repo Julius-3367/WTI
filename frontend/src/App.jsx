@@ -22,6 +22,7 @@ import NotFound from './pages/NotFound';
 // Dashboard Pages
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminUsers from './pages/admin/Users';
+import CreateEditUser from './pages/admin/CreateEditUser';
 import AdminCourses from './pages/admin/Courses';
 import AdminCreateCourse from './pages/admin/CreateCourse';
 import AdminCompanies from './pages/admin/Companies';
@@ -288,6 +289,9 @@ const App = () => {
                 <Routes>
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="users" element={<AdminUsers />} />
+                  <Route path="users/new" element={<CreateEditUser />} />
+                  <Route path="users/:id" element={<CreateEditUser />} />
+                  <Route path="users/:id/edit" element={<CreateEditUser />} />
                   <Route path="courses" element={<AdminCourses />} />
                   <Route path="courses/new" element={<AdminCreateCourse />} />
                   <Route path="courses/:id/edit" element={<AdminCreateCourse />} />

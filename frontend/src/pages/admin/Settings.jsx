@@ -51,7 +51,7 @@ const Settings = () => {
     timezone: 'UTC',
     language: 'en',
     dateFormat: 'MM/DD/YYYY',
-    currency: 'USD',
+    currency: 'KES',
   });
 
   // Notification Settings
@@ -235,6 +235,7 @@ const Settings = () => {
                       setGeneralSettings({ ...generalSettings, currency: e.target.value })
                     }
                   >
+                    <MenuItem value="KES">KES (KSh)</MenuItem>
                     <MenuItem value="USD">USD ($)</MenuItem>
                     <MenuItem value="EUR">EUR (€)</MenuItem>
                     <MenuItem value="GBP">GBP (£)</MenuItem>

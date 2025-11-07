@@ -1,5 +1,18 @@
 const prisma = require('../config/database');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
+
+// Simple in-memory job tracker for report generation (keeps demo-lightweight)
+const reportJobs = new Map();
+const REPORTS_DIR = path.join(__dirname, '..', '..', 'uploads', 'reports');
+
+// Ensure reports directory exists
+try {
+  fs.mkdirSync(REPORTS_DIR, { recursive: true });
+} catch (err) {
+  console.error('Failed to create reports directory:', err.message);
+}
 
 /**
  * Get admin dashboard overview
@@ -169,7 +182,13 @@ const getAllUsers = async (req, res) => {
 
     res.json({
       success: true,
-      data: users,
+      data: {
+        users,
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit)),
+      },
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -382,7 +401,13 @@ const getAllCourses = async (req, res) => {
 
     res.json({
       success: true,
-      data: courses,
+      data: {
+        courses,
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit)),
+      },
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -2709,6 +2734,232 @@ const deleteCertificateTemplate = async (req, res) => {
   }
 };
 
+/**
+ * Generate report (queues job and returns job id)
+ */
+const generateReport = async (req, res) => {
+  try {
+    const { type = 'generic', format = 'csv', startDate, endDate } = req.body || {};
+
+      const jobId = `r_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const createdAt = new Date();
+
+      // Persist a job record in the database so it survives restarts
+      const dbJob = await prisma.reportJob.create({
+        data: {
+          tenantId: req.user?.tenantId || 1,
+          type,
+          format,
+          status: 'queued',
+          downloadUrl: null,
+          meta: { startDate: startDate || null, endDate: endDate || null },
+        },
+      });
+
+      const job = {
+        id: `r_${dbJob.id}_${Date.now()}`, // keep a friendly unique id for file naming
+        dbId: dbJob.id,
+        type,
+        format,
+        status: 'queued',
+        createdAt: createdAt.toISOString(),
+        downloadUrl: null,
+      };
+
+      // keep an in-memory mirror for quick lookups while process runs
+      reportJobs.set(job.id, job);
+
+      // Respond quickly with job id, then process asynchronously
+      res.status(202).json({ success: true, data: { jobId: job.id, ...job } });
+
+      // Async processing (fire-and-forget)
+      (async () => {
+        try {
+          const startedAt = new Date();
+
+          // update DB status -> processing
+          await prisma.reportJob.update({ where: { id: dbJob.id }, data: { status: 'processing', startedAt } });
+
+          const processingJob = { ...job, status: 'processing', startedAt: startedAt.toISOString() };
+          reportJobs.set(job.id, processingJob);
+
+          // Data selection based on type (simple examples)
+        let rows = [];
+        if (type === 'users') {
+          rows = await prisma.user.findMany({
+            select: { id: true, email: true, firstName: true, lastName: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1000,
+          });
+        } else if (type === 'courses') {
+          rows = await prisma.course.findMany({
+            select: { id: true, title: true, code: true, category: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1000,
+          });
+        } else {
+          // default sample
+          rows = [{ info: `Report for type '${type}' not implemented; this is a sample row.` }];
+        }
+
+        // Ensure directory exists (best-effort)
+        try { fs.mkdirSync(REPORTS_DIR, { recursive: true }); } catch (e) { /* ignore */ }
+
+        // Write CSV file (simple, no external deps)
+  const fileName = `${job.id}.csv`;
+  const filePath = path.join(REPORTS_DIR, fileName);
+        const out = fs.createWriteStream(filePath, { encoding: 'utf8' });
+
+        if (rows.length > 0) {
+          const headers = Object.keys(rows[0]);
+          out.write(headers.join(',') + '\n');
+          for (const r of rows) {
+            const line = headers.map(h => {
+              const v = r[h] === null || r[h] === undefined ? '' : String(r[h]);
+              // basic sanitization: remove newlines and commas
+              return v.replace(/\n/g, ' ').replace(/\r/g, ' ').replace(/,/g, ' ');
+            }).join(',');
+            out.write(line + '\n');
+          }
+        } else {
+          out.write('message\n');
+          out.write('no-data\n');
+        }
+
+        out.end();
+        await new Promise((resolve) => out.on('finish', resolve));
+
+        const downloadUrl = `/uploads/reports/${fileName}`;
+        const completedAt = new Date();
+
+        // update DB record
+        await prisma.reportJob.update({ where: { id: dbJob.id }, data: { status: 'completed', completedAt, downloadUrl } });
+
+        const completedJob = { ...processingJob, status: 'completed', completedAt: completedAt.toISOString(), downloadUrl };
+        reportJobs.set(job.id, completedJob);
+      } catch (err) {
+        const failedAt = new Date();
+        // try update DB
+        try {
+          await prisma.reportJob.update({ where: { id: dbJob.id }, data: { status: 'failed', error: err.message, completedAt: failedAt } });
+        } catch (uerr) {
+          console.error('Failed to update DB report job status:', uerr.message);
+        }
+
+        const failedJob = { ...reportJobs.get(job.id), status: 'failed', error: err.message, failedAt: failedAt.toISOString() };
+        reportJobs.set(job.id, failedJob);
+        console.error('Report processing failed for job', job.id, err);
+      }
+    })();
+
+  } catch (error) {
+    console.error('Error queueing report:', error);
+    res.status(500).json({ success: false, message: 'Failed to queue report', error: error.message });
+  }
+};
+
+/**
+ * Get report status
+ */
+const getReportStatus = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    if (!jobId) return res.status(400).json({ success: false, message: 'jobId is required' });
+
+    // First try in-memory mirror
+    const mem = reportJobs.get(jobId);
+    if (mem) return res.json({ success: true, data: mem });
+
+    // If not in memory, try DB (jobId was created with pattern r_<dbId>_<ts>)
+    const parts = jobId.split('_');
+    const dbIdPart = parts.length >= 2 ? parseInt(parts[1], 10) : null;
+    if (!dbIdPart) return res.status(404).json({ success: false, message: 'Report job not found' });
+
+    const job = await prisma.reportJob.findUnique({ where: { id: dbIdPart } });
+    if (!job) return res.status(404).json({ success: false, message: 'Report job not found' });
+
+    res.json({ success: true, data: job });
+  } catch (error) {
+    console.error('Error fetching report status:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch report status', error: error.message });
+  }
+};
+
+/**
+ * Download generated report file
+ */
+const downloadReport = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    if (!jobId) return res.status(400).json({ success: false, message: 'jobId is required' });
+    // Check in-memory first
+    let job = reportJobs.get(jobId);
+    let dbId = null;
+    if (!job) {
+      // parse db id from jobId (r_<dbId>_<ts>)
+      const parts = jobId.split('_');
+      dbId = parts.length >= 2 ? parseInt(parts[1], 10) : null;
+      if (!dbId) return res.status(404).json({ success: false, message: 'Report job not found' });
+
+      job = await prisma.reportJob.findUnique({ where: { id: dbId } });
+      if (!job) return res.status(404).json({ success: false, message: 'Report job not found' });
+    }
+
+    const status = job.status || job.status;
+    const downloadUrl = job.downloadUrl || job.downloadUrl;
+
+    if (status !== 'completed' || !downloadUrl) {
+      return res.status(400).json({ success: false, message: 'Report not ready for download', job });
+    }
+
+    const fileName = path.basename(downloadUrl);
+    const filePath = path.join(REPORTS_DIR, fileName);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, message: 'Report file not found' });
+    }
+
+    return res.sendFile(filePath);
+  } catch (error) {
+    console.error('Error downloading report:', error);
+    res.status(500).json({ success: false, message: 'Failed to download report', error: error.message });
+  }
+};
+
+/**
+ * List recent reports (in-memory)
+ */
+const getReports = async (req, res) => {
+  try {
+    // Prefer persisted records so jobs survive restarts
+    const dbJobs = await prisma.reportJob.findMany({ orderBy: { createdAt: 'desc' }, take: 100 });
+
+    // Map DB jobs to the API shape, and include the friendly in-memory id if present
+    const reports = dbJobs.map((j) => {
+      const friendlyId = `r_${j.id}_${new Date(j.createdAt).getTime()}`;
+      const mem = reportJobs.get(friendlyId);
+      return {
+        id: mem ? mem.id : friendlyId,
+        dbId: j.id,
+        type: j.type,
+        format: j.format,
+        status: j.status,
+        downloadUrl: j.downloadUrl,
+        error: j.error,
+        meta: j.meta,
+        createdAt: j.createdAt,
+        startedAt: j.startedAt,
+        completedAt: j.completedAt,
+      };
+    });
+
+    res.json({ success: true, data: { reports } });
+  } catch (error) {
+    console.error('Error listing reports:', error);
+    res.status(500).json({ success: false, message: 'Failed to list reports', error: error.message });
+  }
+};
+
 module.exports = {
   getDashboard,
   getAllUsers,
@@ -2749,4 +3000,11 @@ module.exports = {
   createCertificateTemplate,
   updateCertificateTemplate,
   deleteCertificateTemplate,
+  // Reports
+  getReports,
+  // Reports
+  generateReport,
+  getReportStatus,
+  downloadReport,
+  getReports,
 };

@@ -8,7 +8,8 @@ import axios from 'axios';
 import { mockApiResponses } from '../seed/demoData';
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+// Ensure the default points to the backend dev server + `/api` prefix
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 // Create axios instance

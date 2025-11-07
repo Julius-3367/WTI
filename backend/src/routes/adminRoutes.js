@@ -39,6 +39,11 @@ router.get('/candidates', adminController.getAllCandidates);
  * Statistics & Reports
  */
 router.get('/statistics', adminController.getStatistics);
+// Report generation endpoints (async jobs)
+router.post('/reports/generate', adminController.generateReport);
+router.get('/reports/status/:jobId', adminController.getReportStatus);
+router.get('/reports/download/:jobId', adminController.downloadReport);
+router.get('/reports', adminController.getReports);
 router.get('/activity-logs', adminController.getActivityLogs);
 
 /**

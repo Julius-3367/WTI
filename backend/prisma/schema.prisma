@@ -147,6 +147,7 @@ model Tenant {
   invoices             Invoice[]
   notifications        Notification[]
   settings             Setting[]
+  reportJobs           ReportJob[]
 
   @@map("tenants")
 }
@@ -510,6 +511,26 @@ model AttendanceRecord {
   @@unique([tenantId, enrollmentId, date])
   @@index([tenantId, courseId, date])
   @@map("attendance_records")
+}
+
+/// Report Jobs (persisted)
+model ReportJob {
+  id          Int       @id @default(autoincrement())
+  tenantId    Int?
+  type        String
+  format      String    @default("csv")
+  status      String    @default("queued")
+  downloadUrl String?
+  error       String?
+  meta        Json?
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status])
+  @@map("report_jobs")
 }
 
 model Assessment {
