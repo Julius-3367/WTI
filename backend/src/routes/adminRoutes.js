@@ -45,6 +45,12 @@ router.delete('/companies/:id', adminController.deleteCompany);
 router.get('/candidates', adminController.getAllCandidates);
 
 /**
+ * Enrollment Management
+ */
+router.get('/enrollments', adminController.getEnrollments);
+router.put('/enrollments/:id', adminController.updateEnrollmentStatus);
+
+/**
  * Statistics & Reports
  */
 router.get('/statistics', adminController.getStatistics);
@@ -78,9 +84,11 @@ router.get('/certificates', adminController.getCertificates);
 router.get('/certificates/statistics', adminController.getCertificateStatistics);
 router.get('/certificates/:id', adminController.getCertificateById);
 router.post('/certificates/generate', adminController.generateCertificate);
+router.put('/certificates/:id', adminController.updateCertificate);
 router.post('/certificates/bulk-generate', adminController.bulkGenerateCertificates);
 router.get('/certificates/:id/download', adminController.downloadCertificate);
 router.post('/certificates/:id/send', adminController.sendCertificate);
+router.post('/certificates/:id/preview', adminController.previewCertificate);
 router.post('/certificates/verify', adminController.verifyCertificate);
 router.put('/certificates/:id/revoke', adminController.revokeCertificate);
 router.post('/certificates/:id/reissue', adminController.reissueCertificate);
@@ -93,5 +101,13 @@ router.get('/certificate-templates/:id', adminController.getCertificateTemplateB
 router.post('/certificate-templates', adminController.createCertificateTemplate);
 router.put('/certificate-templates/:id', adminController.updateCertificateTemplate);
 router.delete('/certificate-templates/:id', adminController.deleteCertificateTemplate);
+
+/**
+ * Notifications
+ */
+router.get('/notifications', adminController.getNotifications);
+router.patch('/notifications/:id/read', adminController.markNotificationAsRead);
+router.patch('/notifications/mark-all-read', adminController.markAllNotificationsAsRead);
+router.delete('/notifications/:id', adminController.deleteNotification);
 
 module.exports = router;

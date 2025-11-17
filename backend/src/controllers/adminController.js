@@ -135,15 +135,15 @@ const getAllUsers = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
-    
+
     if (role) {
       where.role = { name: role };
     }
-    
+
     if (status) {
       where.status = status;
     }
-    
+
     if (search) {
       where.OR = [
         { email: { contains: search } },
@@ -370,11 +370,11 @@ const getAllCourses = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
-    
+
     if (status) {
       where.status = status;
     }
-    
+
     if (search) {
       where.OR = [
         { title: { contains: search } },
@@ -490,7 +490,7 @@ const getCompanyById = async (req, res) => {
 const createCompany = async (req, res) => {
   try {
     const { name, email, phone, country, industry, contactPerson, website, address, status } = req.body;
-    
+
     // Validate required field
     if (!name || name.trim() === '') {
       return res.status(400).json({ success: false, message: 'Company name is required' });
@@ -528,9 +528,9 @@ const createCompany = async (req, res) => {
   } catch (error) {
     console.error('Error creating company:', error);
     console.error('Error details:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error creating company', 
+    res.status(500).json({
+      success: false,
+      message: 'Error creating company',
       error: error.message,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
@@ -953,11 +953,11 @@ const getAllCandidates = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const where = {};
-    
+
     if (status) {
       where.status = status;
     }
-    
+
     if (search) {
       where.OR = [
         { fullName: { contains: search } },
@@ -1747,7 +1747,7 @@ const exportAttendance = async (req, res) => {
     // Set headers for download
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename=attendance_${courseId}_${startDate}_${endDate}.csv`);
-    
+
     res.status(200).send(csv);
   } catch (error) {
     console.error('Error exporting attendance:', error);
@@ -1800,17 +1800,19 @@ const getCertificates = async (req, res) => {
     if (search) {
       where.OR = [
         { certificateNumber: { contains: search } },
-        { enrollment: {
-          candidate: {
-            user: {
-              OR: [
-                { firstName: { contains: search } },
-                { lastName: { contains: search } },
-                { email: { contains: search } },
-              ],
+        {
+          enrollment: {
+            candidate: {
+              user: {
+                OR: [
+                  { firstName: { contains: search } },
+                  { lastName: { contains: search } },
+                  { email: { contains: search } },
+                ],
+              },
             },
-          },
-        }},
+          }
+        },
       ];
     }
 
@@ -1951,7 +1953,7 @@ const getCertificateById = async (req, res) => {
  */
 const generateCertificate = async (req, res) => {
   try {
-    const { templateId, candidateId, courseId, enrollmentId, issueDate, expiryDate, grade, remarks } = req.body;
+    const { templateId, candidateId, courseId, enrollmentId, issueDate, expiryDate, grade, remarks, customName } = req.body;
 
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
@@ -2041,6 +2043,14 @@ const generateCertificate = async (req, res) => {
     const signatureData = `${certificateNumber}${enrollment.candidateId}${enrollment.courseId}${issueDate || new Date()}`;
     const digitalSignature = crypto.createHash('sha256').update(signatureData).digest('hex');
 
+    // Prepare remarks with custom data if provided
+    let finalRemarks = remarks || null;
+    if (customName) {
+      const customData = { candidateName: customName };
+      const customDataString = `CUSTOM_DATA:${JSON.stringify(customData)}`;
+      finalRemarks = remarks ? `${remarks}\n${customDataString}` : customDataString;
+    }
+
     // Create certificate
     const certificate = await prisma.certificate.create({
       data: {
@@ -2053,7 +2063,7 @@ const generateCertificate = async (req, res) => {
         expiryDate: expiryDate ? new Date(expiryDate) : null,
         status: 'ISSUED',
         grade: grade || null,
-        remarks: remarks || null,
+        remarks: finalRemarks,
         qrCode: qrCodeData,
         digitalSignature,
         issuedBy: req.user.id,
@@ -2095,6 +2105,120 @@ const generateCertificate = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error generating certificate',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Update certificate (edit name and course)
+ */
+const updateCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { candidateName, courseName, courseCode } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { tenantId: true },
+    });
+
+    // Get existing certificate
+    const existingCertificate = await prisma.certificate.findFirst({
+      where: {
+        id: parseInt(id),
+        tenantId: user.tenantId,
+      },
+      include: {
+        enrollment: {
+          include: {
+            candidate: {
+              include: {
+                user: true,
+              },
+            },
+            course: true,
+          },
+        },
+      },
+    });
+
+    if (!existingCertificate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Certificate not found',
+      });
+    }
+
+    // Parse existing custom data from remarks if it exists
+    let customData = {};
+    try {
+      const remarksLines = (existingCertificate.remarks || '').split('\n');
+      const customDataLine = remarksLines.find(line => line.startsWith('CUSTOM_DATA:'));
+      if (customDataLine) {
+        customData = JSON.parse(customDataLine.replace('CUSTOM_DATA:', ''));
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
+
+    // Update custom data with new values
+    if (candidateName) customData.candidateName = candidateName;
+    if (courseName) customData.courseName = courseName;
+    if (courseCode) customData.courseCode = courseCode;
+
+    // Prepare remarks with custom data
+    const customDataString = `CUSTOM_DATA:${JSON.stringify(customData)}`;
+    const baseRemarks = (existingCertificate.remarks || '')
+      .split('\n')
+      .filter(line => !line.startsWith('CUSTOM_DATA:'))
+      .join('\n')
+      .trim();
+    
+    const newRemarks = baseRemarks 
+      ? `${baseRemarks}\n${customDataString}`
+      : customDataString;
+
+    // Update certificate
+    const updatedCertificate = await prisma.certificate.update({
+      where: { id: parseInt(id) },
+      data: { remarks: newRemarks },
+      include: {
+        enrollment: {
+          include: {
+            candidate: {
+              include: {
+                user: true,
+              },
+            },
+            course: true,
+          },
+        },
+      },
+    });
+
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: req.user.id,
+        action: 'CERTIFICATE_UPDATED',
+        entityType: 'Certificate',
+        entityId: updatedCertificate.id,
+        description: `Updated certificate ${updatedCertificate.certificateNumber}: ${Object.keys(customData).join(', ')} modified`,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Certificate updated successfully',
+      data: updatedCertificate,
+    });
+  } catch (error) {
+    console.error('Error updating certificate:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating certificate',
       error: error.message,
     });
   }
@@ -2211,6 +2335,7 @@ const bulkGenerateCertificates = async (req, res) => {
  */
 const downloadCertificate = async (req, res) => {
   try {
+    const certificateGenerator = require('../services/certificateGeneratorService');
     const { id } = req.params;
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
@@ -2221,7 +2346,7 @@ const downloadCertificate = async (req, res) => {
     const whereClause = {
       id: parseInt(id),
     };
-    
+
     if (user.tenantId) {
       whereClause.tenantId = user.tenantId;
     }
@@ -2248,50 +2373,36 @@ const downloadCertificate = async (req, res) => {
     }
 
     // Get candidate name and course title
-    const candidateName = certificate.enrollment?.candidate?.fullName || 'N/A';
-    const courseTitle = certificate.enrollment?.course?.title || 
-                       certificate.Course?.title || 
-                       certificate.enrollment?.course?.name || 
-                       'Course Name';
-    const issueDate = certificate.issueDate ? new Date(certificate.issueDate).toLocaleDateString() : 'N/A';
+    const candidateName = certificate.enrollment?.candidate?.fullName || 'Unknown Candidate';
+    const courseTitle = certificate.enrollment?.course?.title ||
+      certificate.Course?.title ||
+      certificate.enrollment?.course?.name ||
+      'Training Program';
+    const issueDate = certificate.issueDate || new Date();
 
-    // In production, use a proper PDF generation library like puppeteer or pdfkit
-    // For now, send a simple text-based certificate
-    const pdfContent = `
-================================================================================
-                        CERTIFICATE OF COMPLETION
-================================================================================
+    // Generate professional PDF certificate
+    const pdfBuffer = await certificateGenerator.generateCertificate({
+      certificateNumber: certificate.certificateNumber,
+      candidateName: candidateName,
+      courseTitle: courseTitle,
+      issueDate: issueDate,
+      status: certificate.status,
+      achievementNote: certificate.remarks || 'Successfully completed the training program with distinction',
+    });
 
-Certificate Number: ${certificate.certificateNumber}
-
-This is to certify that
-
-                            ${candidateName}
-
-has successfully completed the training program
-
-                            ${courseTitle}
-
-Issue Date: ${issueDate}
-Status: ${certificate.status}
-
-${certificate.remarks || ''}
-
-${certificate.digitalSignature ? 'Digital Signature: ' + certificate.digitalSignature : ''}
-${certificate.qrCode ? 'QR Code: ' + certificate.qrCode : ''}
-
-================================================================================
-    `.trim();
-
+    // Set headers for PDF download
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=certificate_${certificate.certificateNumber}.pdf`);
-    res.status(200).send(pdfContent);
+    res.setHeader('Content-Disposition', `attachment; filename="Certificate_${certificate.certificateNumber}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+
+    // Send PDF
+    res.send(pdfBuffer);
 
     // Log activity
     try {
       await prisma.activityLog.create({
         data: {
-          tenantId: user.tenantId || certificate.tenantId || 1,
+          tenantId: user.tenantId || certificate.tenantId || null,
           userId: req.user.id,
           action: 'CERTIFICATE_DOWNLOADED',
           entityType: 'Certificate',
@@ -2309,6 +2420,98 @@ ${certificate.qrCode ? 'QR Code: ' + certificate.qrCode : ''}
     res.status(500).json({
       success: false,
       message: 'Error downloading certificate',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Preview certificate (generate PDF in-memory with overrides, no persistence)
+ */
+const previewCertificate = async (req, res) => {
+  try {
+    const certificateGenerator = require('../services/certificateGeneratorService');
+    const { id } = req.params;
+    const { candidateName: overrideCandidateName, courseName: overrideCourseName, courseCode: overrideCourseCode, achievementNote: overrideAchievementNote } = req.body || {};
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { tenantId: true },
+    });
+
+    const whereClause = {
+      id: parseInt(id),
+    };
+
+    if (user.tenantId) {
+      whereClause.tenantId = user.tenantId;
+    }
+
+    const certificate = await prisma.certificate.findFirst({
+      where: whereClause,
+      include: {
+        enrollment: {
+          include: {
+            candidate: true,
+            course: true,
+          },
+        },
+        template: true,
+        Course: true,
+      },
+    });
+
+    if (!certificate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Certificate not found',
+      });
+    }
+
+    // Determine values, preferring overrides provided in the request body
+    const candidateName = overrideCandidateName || certificate.enrollment?.candidate?.fullName || 'Unknown Candidate';
+    const courseTitle = overrideCourseName || certificate.enrollment?.course?.title || certificate.Course?.title || 'Training Program';
+    const courseCode = overrideCourseCode || certificate.enrollment?.course?.code || certificate.Course?.code || '';
+    const issueDate = certificate.issueDate || new Date();
+    const achievementNote = overrideAchievementNote || certificate.remarks || 'Successfully completed the training program with distinction';
+
+    // Generate PDF buffer using the existing generator (in-memory, no DB writes)
+    const pdfBuffer = await certificateGenerator.generateCertificate({
+      certificateNumber: certificate.certificateNumber || `PREVIEW-${Date.now()}`,
+      candidateName: candidateName,
+      courseTitle: courseTitle,
+      courseCode: courseCode,
+      issueDate: issueDate,
+      status: certificate.status,
+      achievementNote: achievementNote,
+    });
+
+    // Send PDF back as attachment
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Certificate_Preview_${certificate.certificateNumber || Date.now()}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+
+    // Log preview activity (best-effort)
+    try {
+      await prisma.activityLog.create({
+        data: {
+          tenantId: user.tenantId || certificate.tenantId || null,
+          userId: req.user.id,
+          action: 'CERTIFICATE_PREVIEWED',
+          entityType: 'Certificate',
+          entityId: certificate.id,
+          description: `Previewed certificate ${certificate.certificateNumber || 'PREVIEW'} with overrides: ${JSON.stringify({ candidateName: overrideCandidateName, courseName: overrideCourseName, courseCode: overrideCourseCode })}`,
+        },
+      });
+    } catch (logErr) {
+      console.error('Error logging preview activity:', logErr);
+    }
+  } catch (error) {
+    console.error('Error generating certificate preview:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating certificate preview',
       error: error.message,
     });
   }
@@ -2707,7 +2910,7 @@ const getCertificateTemplates = async (req, res) => {
     });
 
     const templates = await prisma.certificateTemplate.findMany({
-      where: { tenantId: user.tenantId },
+      where: user.tenantId ? { tenantId: user.tenantId } : {},
       orderBy: { createdAt: 'desc' },
     });
 
@@ -2785,7 +2988,7 @@ const createCertificateTemplate = async (req, res) => {
 
     const template = await prisma.certificateTemplate.create({
       data: {
-        tenantId: user.tenantId,
+        tenantId: user.tenantId || null,
         name,
         description: description || null,
         design: design || {},
@@ -2797,7 +3000,7 @@ const createCertificateTemplate = async (req, res) => {
     // Log activity
     await prisma.activityLog.create({
       data: {
-        tenantId: user.tenantId,
+        tenantId: user.tenantId || null,
         userId: req.user.id,
         action: 'TEMPLATE_CREATED',
         entityType: 'CertificateTemplate',
@@ -2959,49 +3162,49 @@ const generateReport = async (req, res) => {
   try {
     const { type = 'generic', format = 'csv', startDate, endDate } = req.body || {};
 
-      const jobId = `r_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      const createdAt = new Date();
+    const jobId = `r_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const createdAt = new Date();
 
-      // Persist a job record in the database so it survives restarts
-      const dbJob = await prisma.reportJob.create({
-        data: {
-          tenantId: req.user?.tenantId || 1,
-          type,
-          format,
-          status: 'queued',
-          downloadUrl: null,
-          meta: { startDate: startDate || null, endDate: endDate || null },
-        },
-      });
-
-      const job = {
-        id: `r_${dbJob.id}_${Date.now()}`, // keep a friendly unique id for file naming
-        dbId: dbJob.id,
+    // Persist a job record in the database so it survives restarts
+    const dbJob = await prisma.reportJob.create({
+      data: {
+        tenantId: req.user?.tenantId || 1,
         type,
         format,
         status: 'queued',
-        createdAt: createdAt.toISOString(),
         downloadUrl: null,
-      };
+        meta: { startDate: startDate || null, endDate: endDate || null },
+      },
+    });
 
-      // keep an in-memory mirror for quick lookups while process runs
-      reportJobs.set(job.id, job);
+    const job = {
+      id: `r_${dbJob.id}_${Date.now()}`, // keep a friendly unique id for file naming
+      dbId: dbJob.id,
+      type,
+      format,
+      status: 'queued',
+      createdAt: createdAt.toISOString(),
+      downloadUrl: null,
+    };
 
-      // Respond quickly with job id, then process asynchronously
-      res.status(202).json({ success: true, data: { jobId: job.id, ...job } });
+    // keep an in-memory mirror for quick lookups while process runs
+    reportJobs.set(job.id, job);
 
-      // Async processing (fire-and-forget)
-      (async () => {
-        try {
-          const startedAt = new Date();
+    // Respond quickly with job id, then process asynchronously
+    res.status(202).json({ success: true, data: { jobId: job.id, ...job } });
 
-          // update DB status -> processing
-          await prisma.reportJob.update({ where: { id: dbJob.id }, data: { status: 'processing', startedAt } });
+    // Async processing (fire-and-forget)
+    (async () => {
+      try {
+        const startedAt = new Date();
 
-          const processingJob = { ...job, status: 'processing', startedAt: startedAt.toISOString() };
-          reportJobs.set(job.id, processingJob);
+        // update DB status -> processing
+        await prisma.reportJob.update({ where: { id: dbJob.id }, data: { status: 'processing', startedAt } });
 
-          // Data selection based on type (simple examples)
+        const processingJob = { ...job, status: 'processing', startedAt: startedAt.toISOString() };
+        reportJobs.set(job.id, processingJob);
+
+        // Data selection based on type (simple examples)
         let rows = [];
         if (type === 'users') {
           rows = await prisma.user.findMany({
@@ -3024,8 +3227,8 @@ const generateReport = async (req, res) => {
         try { fs.mkdirSync(REPORTS_DIR, { recursive: true }); } catch (e) { /* ignore */ }
 
         // Write CSV file (simple, no external deps)
-  const fileName = `${job.id}.csv`;
-  const filePath = path.join(REPORTS_DIR, fileName);
+        const fileName = `${job.id}.csv`;
+        const filePath = path.join(REPORTS_DIR, fileName);
         const out = fs.createWriteStream(filePath, { encoding: 'utf8' });
 
         if (rows.length > 0) {
@@ -3178,6 +3381,331 @@ const getReports = async (req, res) => {
   }
 };
 
+/**
+ * Get admin notifications
+ */
+const getNotifications = async (req, res) => {
+  try {
+    const { limit = 20 } = req.query;
+    const userId = req.user.id;
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        userId: userId,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit),
+      select: {
+        id: true,
+        templateKey: true,
+        payload: true,
+        status: true,
+        sentAt: true,
+        createdAt: true,
+      },
+    });
+
+    // Transform to frontend format
+    const transformedNotifications = notifications.map(n => ({
+      id: n.id,
+      title: n.payload?.title || 'Notification',
+      message: n.payload?.message || '',
+      type: n.payload?.type || 'INFO',
+      isRead: n.payload?.isRead || false,
+      createdAt: n.createdAt,
+    }));
+
+    // Count unread (notifications without isRead flag or isRead=false)
+    const unreadCount = transformedNotifications.filter(n => !n.isRead).length;
+
+    res.json({
+      success: true,
+      data: transformedNotifications,
+      unreadCount,
+    });
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch notifications',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Mark notification as read
+ */
+const markNotificationAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const notification = await prisma.notification.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found',
+      });
+    }
+
+    // Update payload to mark as read
+    const updatedPayload = {
+      ...(notification.payload || {}),
+      isRead: true,
+      readAt: new Date().toISOString(),
+    };
+
+    const updated = await prisma.notification.update({
+      where: { id: parseInt(id) },
+      data: {
+        payload: updatedPayload,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Notification marked as read',
+      data: updated,
+    });
+  } catch (error) {
+    console.error('Mark notification as read error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark notification as read',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Mark all notifications as read
+ */
+const markAllNotificationsAsRead = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        userId: userId,
+      },
+    });
+
+    // Update each notification's payload
+    await Promise.all(
+      notifications.map(n => {
+        const updatedPayload = {
+          ...(n.payload || {}),
+          isRead: true,
+          readAt: new Date().toISOString(),
+        };
+        return prisma.notification.update({
+          where: { id: n.id },
+          data: { payload: updatedPayload },
+        });
+      })
+    );
+
+    res.json({
+      success: true,
+      message: 'All notifications marked as read',
+    });
+  } catch (error) {
+    console.error('Mark all notifications as read error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark all notifications as read',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Delete notification
+ */
+const deleteNotification = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.notification.delete({
+      where: {
+        id: parseInt(id),
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Notification deleted',
+    });
+  } catch (error) {
+    console.error('Delete notification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete notification',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get all enrollments with filtering
+ */
+const getEnrollments = async (req, res) => {
+  try {
+    const { page = 1, limit = 100, status, courseId, candidateId } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { tenantId: true },
+    });
+
+    const where = {};
+    
+    // Only filter by tenantId if it exists
+    if (user?.tenantId) {
+      where.tenantId = user.tenantId;
+    }
+
+    if (status) {
+      where.enrollmentStatus = status.toUpperCase();
+    }
+
+    if (courseId) {
+      where.courseId = parseInt(courseId);
+    }
+
+    if (candidateId) {
+      where.candidateId = parseInt(candidateId);
+    }
+
+    const [enrollments, total] = await Promise.all([
+      prisma.enrollment.findMany({
+        where,
+        skip,
+        take: parseInt(limit),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          candidate: {
+            select: {
+              id: true,
+              fullName: true,
+              user: {
+                select: {
+                  email: true,
+                },
+              },
+            },
+          },
+          course: {
+            select: {
+              id: true,
+              title: true,
+              code: true,
+            },
+          },
+        },
+      }),
+      prisma.enrollment.count({ where }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        enrollments,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Get enrollments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch enrollments',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Update enrollment status (approve/reject)
+ */
+const updateEnrollmentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, remarks } = req.body;
+
+    if (!['ENROLLED', 'REJECTED', 'WAITLISTED', 'WITHDRAWN'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Allowed: ENROLLED, REJECTED, WAITLISTED, WITHDRAWN',
+      });
+    }
+
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        candidate: {
+          select: {
+            fullName: true,
+            user: {
+              select: { email: true },
+            },
+          },
+        },
+        course: {
+          select: { title: true, code: true },
+        },
+      },
+    });
+
+    if (!enrollment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Enrollment not found',
+      });
+    }
+
+    const updatedEnrollment = await prisma.enrollment.update({
+      where: { id: parseInt(id) },
+      data: {
+        enrollmentStatus: status,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Log the activity
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: `${status === 'ENROLLED' ? 'APPROVED' : 'UPDATED'}_ENROLLMENT`,
+        details: `${status === 'ENROLLED' ? 'Approved' : 'Updated'} enrollment for ${enrollment.candidate.fullName} in ${enrollment.course.title}${remarks ? `. Remarks: ${remarks}` : ''}`,
+        ipAddress: req.ip,
+        tenantId: req.user.tenantId,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `Enrollment ${status.toLowerCase()} successfully`,
+      data: updatedEnrollment,
+    });
+  } catch (error) {
+    console.error('Update enrollment status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update enrollment status',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getDashboard,
   getAllUsers,
@@ -3191,6 +3719,8 @@ module.exports = {
   updateCourse,
   deleteCourse,
   getAllCandidates,
+  getEnrollments,
+  updateEnrollmentStatus,
   getStatistics,
   getActivityLogs,
   getCertificateRequests,
@@ -3205,8 +3735,10 @@ module.exports = {
   getCertificates,
   getCertificateById,
   generateCertificate,
+  updateCertificate,
   bulkGenerateCertificates,
   downloadCertificate,
+  previewCertificate,
   sendCertificate,
   verifyCertificate,
   revokeCertificate,
@@ -3224,6 +3756,11 @@ module.exports = {
   createCompany,
   updateCompany,
   deleteCompany,
+  // Notifications
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
   // Reports
   getReports,
   // Reports

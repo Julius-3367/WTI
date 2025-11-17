@@ -38,6 +38,8 @@ import {
   HourglassEmpty,
   Description,
   Print,
+  Add as AddIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { adminService } from '../../api/admin';
 import { format } from 'date-fns';
@@ -57,15 +59,27 @@ const CertificateList = () => {
   });
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState(null);
   const [sendEmail, setSendEmail] = useState('');
   const [revokeReason, setRevokeReason] = useState('');
   const [courses, setCourses] = useState([]);
+  const [completedEnrollments, setCompletedEnrollments] = useState([]);
+  const [selectedEnrollment, setSelectedEnrollment] = useState('');
+  const [generateLoading, setGenerateLoading] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [useCustomName, setUseCustomName] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editedCertificate, setEditedCertificate] = useState(null);
+  const [editedName, setEditedName] = useState('');
+  const [editedCourseName, setEditedCourseName] = useState('');
+  const [editedCourseCode, setEditedCourseCode] = useState('');
 
   useEffect(() => {
     fetchCertificates();
     fetchStatistics();
     fetchCourses();
+    fetchCompletedEnrollments();
   }, [filters]);
 
   const fetchCertificates = async () => {
@@ -104,29 +118,44 @@ const CertificateList = () => {
     }
   };
 
+  const fetchCompletedEnrollments = async () => {
+    try {
+      const response = await adminService.getEnrollments({ enrollmentStatus: 'COMPLETED' });
+      const enrollments = response.data?.data?.enrollments || response.data?.data || response.data || [];
+      // Filter out enrollments that already have certificates
+      const enrollmentsWithoutCerts = enrollments.filter(enrollment =>
+        !certificates.some(cert => cert.enrollmentId === enrollment.id)
+      );
+      setCompletedEnrollments(enrollmentsWithoutCerts);
+    } catch (err) {
+      console.error('Failed to fetch completed enrollments:', err);
+      setCompletedEnrollments([]);
+    }
+  };
+
   const handleDownload = async (certificate) => {
     try {
       setError(null);
       setSuccess(null);
       const response = await adminService.downloadCertificate(certificate.id);
-      
+
       // Create a blob from the response
       const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' });
-      
+
       // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(blob);
-      
+
       // Create a temporary link element and trigger download
       const link = document.createElement('a');
       link.href = url;
       link.download = `Certificate_${certificate.certificateNumber || certificate.id}.pdf`;
       document.body.appendChild(link);
       link.click();
-      
+
       // Clean up
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       setSuccess(`Certificate downloaded successfully`);
     } catch (err) {
       console.error('Download error:', err);
@@ -139,16 +168,16 @@ const CertificateList = () => {
       setError(null);
       setSuccess(null);
       const response = await adminService.downloadCertificate(certificate.id);
-      
+
       // Create a blob from the response
       const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' });
-      
+
       // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(blob);
-      
+
       // Open in new window for printing
       const printWindow = window.open(url, '_blank');
-      
+
       if (printWindow) {
         printWindow.addEventListener('load', () => {
           printWindow.print();
@@ -168,7 +197,7 @@ const CertificateList = () => {
         window.URL.revokeObjectURL(url);
         setError('Pop-up blocked. Certificate downloaded instead. Please allow pop-ups to print directly.');
       }
-      
+
       setSuccess(`Certificate ready for printing`);
     } catch (err) {
       console.error('Print error:', err);
@@ -216,6 +245,99 @@ const CertificateList = () => {
       fetchStatistics();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to reissue certificate');
+    }
+  };
+
+  const handleEditCertificate = async () => {
+    if (!editedName.trim()) {
+      setError('Please enter a valid name');
+      return;
+    }
+
+    try {
+      setError(null);
+      setSuccess(null);
+      await adminService.updateCertificate(editedCertificate.id, {
+        candidateName: editedName.trim(),
+        courseName: editedCourseName.trim() || undefined,
+        courseCode: editedCourseCode.trim() || undefined,
+      });
+      setSuccess('Certificate updated successfully!');
+      setEditDialogOpen(false);
+      setEditedCertificate(null);
+      setEditedName('');
+      setEditedCourseName('');
+      setEditedCourseCode('');
+      fetchCertificates();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update certificate');
+    }
+  };
+
+  const handleDownloadPreview = async () => {
+    if (!editedCertificate) return;
+    try {
+      setError(null);
+      setSuccess(null);
+      const response = await adminService.previewCertificate(editedCertificate.id, {
+        candidateName: editedName.trim(),
+        courseName: editedCourseName.trim() || undefined,
+        courseCode: editedCourseCode.trim() || undefined,
+      });
+
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Certificate_Preview_${editedCertificate.certificateNumber || editedCertificate.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setSuccess('Preview downloaded');
+    } catch (err) {
+      console.error('Preview download error:', err);
+      setError(err.response?.data?.message || 'Failed to download preview');
+    }
+  };
+
+  const handleGenerateCertificate = async () => {
+    if (!selectedEnrollment) {
+      setError('Please select an enrollment');
+      return;
+    }
+
+    if (useCustomName && !customName.trim()) {
+      setError('Please enter a custom name');
+      return;
+    }
+
+    try {
+      setGenerateLoading(true);
+      setError(null);
+      setSuccess(null);
+
+      await adminService.generateCertificate({
+        enrollmentId: selectedEnrollment,
+        issueDate: new Date().toISOString(),
+        status: 'ISSUED',
+        remarks: 'Successfully completed all course requirements and assessments.',
+        customName: useCustomName ? customName.trim() : undefined,
+      });
+
+      setSuccess('Certificate generated successfully!');
+      setGenerateDialogOpen(false);
+      setSelectedEnrollment('');
+      setCustomName('');
+      setUseCustomName(false);
+      fetchCertificates();
+      fetchStatistics();
+      fetchCompletedEnrollments();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to generate certificate');
+    } finally {
+      setGenerateLoading(false);
     }
   };
 
@@ -351,7 +473,7 @@ const CertificateList = () => {
       )}
 
       {/* Filters */}
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap" alignItems="center">
         <TextField
           label="Search"
           variant="outlined"
@@ -399,6 +521,18 @@ const CertificateList = () => {
           onClick={fetchCertificates}
         >
           Refresh
+        </Button>
+        <Box sx={{ flexGrow: 1 }} />
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            fetchCompletedEnrollments();
+            setGenerateDialogOpen(true);
+          }}
+          color="primary"
+        >
+          Generate Certificate
         </Button>
       </Stack>
 
@@ -468,6 +602,20 @@ const CertificateList = () => {
                       <Stack direction="row" spacing={1} justifyContent="flex-end">
                         {certificate.status === 'ISSUED' && (
                           <>
+                            <Tooltip title="Edit Name">
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  setEditedCertificate(certificate);
+                                  setEditedName(certificate.candidateName || '');
+                                  setEditedCourseName(certificate.courseName || '');
+                                  setEditedCourseCode(certificate.courseCode || '');
+                                  setEditDialogOpen(true);
+                                }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Download">
                               <IconButton
                                 size="small"
@@ -592,6 +740,166 @@ const CertificateList = () => {
             disabled={!revokeReason}
           >
             Revoke
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Generate Certificate Dialog */}
+      <Dialog open={generateDialogOpen} onClose={() => setGenerateDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Generate Certificate</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Select a completed enrollment to generate a certificate. Only enrollments without existing certificates are shown.
+          </Alert>
+          <TextField
+            select
+            label="Select Completed Enrollment"
+            fullWidth
+            value={selectedEnrollment}
+            onChange={(e) => setSelectedEnrollment(e.target.value)}
+            sx={{ mt: 2 }}
+            helperText={completedEnrollments.length === 0 ? "No completed enrollments without certificates found" : ""}
+          >
+            {completedEnrollments.length === 0 ? (
+              <MenuItem value="" disabled>
+                No enrollments available
+              </MenuItem>
+            ) : (
+              completedEnrollments.map((enrollment) => (
+                <MenuItem key={enrollment.id} value={enrollment.id}>
+                  {enrollment.candidate?.fullName || 'Unknown Candidate'} - {enrollment.course?.title || 'Unknown Course'}
+                  {enrollment.completionDate && ` (Completed: ${format(new Date(enrollment.completionDate), 'MMM dd, yyyy')})`}
+                </MenuItem>
+              ))
+            )}
+          </TextField>
+
+          <Box sx={{ mt: 3 }}>
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+              <Typography variant="body2" fontWeight={500}>
+                Use Custom Name on Certificate
+              </Typography>
+              <Button
+                size="small"
+                variant={useCustomName ? 'contained' : 'outlined'}
+                onClick={() => setUseCustomName(!useCustomName)}
+              >
+                {useCustomName ? 'Yes' : 'No'}
+              </Button>
+            </Stack>
+            
+            {useCustomName && (
+              <TextField
+                label="Custom Name for Certificate"
+                fullWidth
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="e.g., John Doe"
+                helperText="This name will appear on the certificate instead of the candidate's registered name"
+                sx={{ mt: 1 }}
+              />
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setGenerateDialogOpen(false);
+            setSelectedEnrollment('');
+            setCustomName('');
+            setUseCustomName(false);
+          }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleGenerateCertificate}
+            variant="contained"
+            color="primary"
+            disabled={!selectedEnrollment || generateLoading || (useCustomName && !customName.trim())}
+            startIcon={generateLoading ? <CircularProgress size={20} /> : <AddIcon />}
+          >
+            {generateLoading ? 'Generating...' : 'Generate Certificate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Certificate Name Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Certificate Details</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2, mt: 1 }}>
+            Update the candidate's name and course details as they should appear on the certificate. This is useful for correcting typos or formatting issues.
+          </Alert>
+          <TextField
+            autoFocus
+            label="Candidate Name on Certificate"
+            fullWidth
+            value={editedName}
+            onChange={(e) => setEditedName(e.target.value)}
+            placeholder="e.g., John Doe"
+            helperText="Enter the correct name as it should appear on the certificate"
+            sx={{ mt: 2 }}
+          />
+          <TextField
+            label="Course Name (Optional)"
+            fullWidth
+            value={editedCourseName}
+            onChange={(e) => setEditedCourseName(e.target.value)}
+            placeholder="e.g., Introduction to Programming"
+            helperText="Override the course name if needed"
+            sx={{ mt: 2 }}
+          />
+          <TextField
+            label="Course Code (Optional)"
+            fullWidth
+            value={editedCourseCode}
+            onChange={(e) => setEditedCourseCode(e.target.value)}
+            placeholder="e.g., CS101"
+            helperText="Override the course code if needed"
+            sx={{ mt: 2 }}
+          />
+          {editedCertificate && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Certificate Details
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                <strong>Course:</strong> {editedCertificate.courseName}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Certificate #:</strong> {editedCertificate.certificateNumber}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Issue Date:</strong> {editedCertificate.issueDate ? format(new Date(editedCertificate.issueDate), 'MMM dd, yyyy') : '—'}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setEditDialogOpen(false);
+            setEditedCertificate(null);
+            setEditedName('');
+            setEditedCourseName('');
+            setEditedCourseCode('');
+          }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDownloadPreview}
+            variant="outlined"
+            color="primary"
+            disabled={!editedName.trim() || !editedCertificate}
+          >
+            Download Preview
+          </Button>
+          <Button
+            onClick={handleEditCertificate}
+            variant="contained"
+            color="primary"
+            disabled={!editedName.trim()}
+            startIcon={<EditIcon />}
+          >
+            Update Certificate
           </Button>
         </DialogActions>
       </Dialog>

@@ -30,6 +30,10 @@ export const adminService = {
   // Candidate Management
   getAllCandidates: (params) => axios.get(`${API_URL}/candidates`, { params }),
 
+  // Enrollment Management
+  getEnrollments: (status) => axios.get(`${API_URL}/enrollments`, { params: { status } }),
+  updateEnrollmentStatus: (id, data) => axios.put(`${API_URL}/enrollments/${id}`, data),
+
   // Statistics
   getStatistics: (params) => axios.get(`${API_URL}/statistics`, { params }),
   getActivityLogs: (params) => axios.get(`${API_URL}/activity-logs`, { params }),
@@ -40,8 +44,8 @@ export const adminService = {
   processCertificateRequest: (id, data) => axios.put(`${API_URL}/certificate-requests/${id}`, data),
 
   // Attendance Management
-  getAttendance: (courseId, date) => axios.get(`${API_URL}/attendance`, { 
-    params: { courseId, date } 
+  getAttendance: (courseId, date) => axios.get(`${API_URL}/attendance`, {
+    params: { courseId, date }
   }),
   saveAttendance: (data) => axios.post(`${API_URL}/attendance`, data),
   getAttendanceStatistics: (courseId, startDate, endDate) => axios.get(`${API_URL}/attendance/statistics`, {
@@ -58,7 +62,11 @@ export const adminService = {
   getCertificateById: (id) => axios.get(`${API_URL}/certificates/${id}`),
   generateCertificate: (data) => axios.post(`${API_URL}/certificates/generate`, data),
   bulkGenerateCertificates: (data) => axios.post(`${API_URL}/certificates/bulk-generate`, data),
+  updateCertificate: (id, data) => axios.put(`${API_URL}/certificates/${id}`, data),
   downloadCertificate: (id) => axios.get(`${API_URL}/certificates/${id}/download`, {
+    responseType: 'blob',
+  }),
+  previewCertificate: (id, data) => axios.post(`${API_URL}/certificates/${id}/preview`, data, {
     responseType: 'blob',
   }),
   sendCertificate: (id, email) => axios.post(`${API_URL}/certificates/${id}/send`, { email }),
@@ -66,13 +74,19 @@ export const adminService = {
   revokeCertificate: (id, reason) => axios.put(`${API_URL}/certificates/${id}/revoke`, { reason }),
   reissueCertificate: (id) => axios.post(`${API_URL}/certificates/${id}/reissue`),
   getCertificateStatistics: () => axios.get(`${API_URL}/certificates/statistics`),
-  
+
   // Certificate Templates
   getCertificateTemplates: () => axios.get(`${API_URL}/certificate-templates`),
   getCertificateTemplateById: (id) => axios.get(`${API_URL}/certificate-templates/${id}`),
   createCertificateTemplate: (data) => axios.post(`${API_URL}/certificate-templates`, data),
   updateCertificateTemplate: (id, data) => axios.put(`${API_URL}/certificate-templates/${id}`, data),
   deleteCertificateTemplate: (id) => axios.delete(`${API_URL}/certificate-templates/${id}`),
+
+  // Notifications
+  getNotifications: (params) => axios.get(`${API_URL}/notifications`, { params }),
+  markNotificationAsRead: (id) => axios.patch(`${API_URL}/notifications/${id}/read`),
+  markAllNotificationsAsRead: () => axios.patch(`${API_URL}/notifications/mark-all-read`),
+  deleteNotification: (id) => axios.delete(`${API_URL}/notifications/${id}`),
 };
 
 export default adminService;
