@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Box, 
-  Drawer, 
-  List, 
-  ListItem, 
-  ListItemButton, 
-  ListItemIcon, 
-  ListItemText, 
-  Toolbar, 
-  AppBar, 
-  Typography, 
-  IconButton, 
+import {
+  Box,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Toolbar,
+  AppBar,
+  Typography,
+  IconButton,
   Divider,
   useTheme,
   useMediaQuery,
@@ -19,7 +19,6 @@ import {
   Menu,
   MenuItem,
   Tooltip,
-  Badge
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -28,7 +27,6 @@ import {
   Work as WorkIcon,
   Assessment as AssessmentIcon,
   Settings as SettingsIcon,
-  Notifications as NotificationsIcon,
   Logout as LogoutIcon,
   AccountCircle as AccountCircleIcon,
   ChevronLeft as ChevronLeftIcon,
@@ -39,6 +37,7 @@ import {
   Category as CategoryIcon
 } from '@mui/icons-material';
 import { styled, useTheme as useMuiTheme, alpha } from '@mui/material/styles';
+import NotificationMenu from '../../components/layout/NotificationMenu';
 
 const drawerWidth = 240;
 
@@ -112,9 +111,9 @@ const AdminLayout = () => {
     <div>
       <DrawerHeader>
         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', p: 2 }}>
-          <Avatar 
-            src="/logo.png" 
-            alt="Logo" 
+          <Avatar
+            src="/logo.png"
+            alt="Logo"
             sx={{ width: 40, height: 40, mr: 1, bgcolor: 'primary.main' }}
           />
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
@@ -181,20 +180,14 @@ const AdminLayout = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
-          
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Tooltip title="Notifications">
-              <IconButton color="inherit">
-                <Badge badgeContent={4} color="error">
-                  <NotificationsIcon />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-            
+            <NotificationMenu />
+
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }} onClick={handleProfileMenuOpen}>
-              <Avatar 
-                src="https://randomuser.me/api/portraits/men/1.jpg" 
-                alt="User" 
+              <Avatar
+                src="https://randomuser.me/api/portraits/men/1.jpg"
+                alt="User"
                 sx={{ width: 32, height: 32 }}
               />
               <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>

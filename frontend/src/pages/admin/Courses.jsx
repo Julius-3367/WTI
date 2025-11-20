@@ -56,12 +56,12 @@ const Courses = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const params = {
         page: page + 1,
         limit: rowsPerPage,
       };
-      
+
       if (searchQuery) params.search = searchQuery;
       if (statusFilter) params.status = statusFilter;
 

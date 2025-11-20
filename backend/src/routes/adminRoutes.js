@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const appealController = require('../controllers/attendanceAppealController');
 const { authenticate, authorize } = require('../middleware/auth');
 
 // All routes require authentication and Admin role
@@ -109,5 +110,11 @@ router.get('/notifications', adminController.getNotifications);
 router.patch('/notifications/:id/read', adminController.markNotificationAsRead);
 router.patch('/notifications/mark-all-read', adminController.markAllNotificationsAsRead);
 router.delete('/notifications/:id', adminController.deleteNotification);
+
+/**
+ * Attendance Appeals
+ */
+router.get('/attendance/appeals', appealController.getAdminAppeals);
+router.put('/attendance/appeals/:appealId/override', appealController.overrideAppeal);
 
 module.exports = router;

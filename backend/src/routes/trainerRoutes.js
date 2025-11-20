@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const trainerController = require('../controllers/trainerController');
+const appealController = require('../controllers/attendanceAppealController');
 const { authenticate, authorize } = require('../middleware/auth');
 
 // All routes require authentication and Trainer role
@@ -30,5 +31,11 @@ router.post('/attendance', trainerController.recordAttendance);
  */
 router.post('/assessments', trainerController.createAssessment);
 router.put('/assessments/:id', trainerController.updateAssessment);
+
+/**
+ * Attendance Appeals
+ */
+router.get('/attendance/appeals', appealController.getTrainerAppeals);
+router.put('/attendance/appeals/:appealId/review', appealController.reviewAppeal);
 
 module.exports = router;

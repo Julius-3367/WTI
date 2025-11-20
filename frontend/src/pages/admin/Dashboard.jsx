@@ -44,7 +44,7 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Try to fetch dashboard data
       try {
         const response = await adminService.getDashboard();
@@ -135,7 +135,7 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-        
+
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
@@ -148,7 +148,7 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-        
+
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
@@ -164,7 +164,7 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-        
+
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
@@ -195,7 +195,7 @@ const AdminDashboard = () => {
                   View All
                 </Button>
               </Box>
-              
+
               <TableContainer>
                 <Table size="small">
                   <TableHead>
@@ -265,7 +265,7 @@ const AdminDashboard = () => {
                   View All
                 </Button>
               </Box>
-              
+
               <TableContainer>
                 <Table size="small">
                   <TableHead>
@@ -316,7 +316,7 @@ const AdminDashboard = () => {
               <Typography variant="h6" fontWeight="bold" mb={2}>
                 Recent Activity
               </Typography>
-              
+
               <TableContainer>
                 <Table size="small">
                   <TableHead>

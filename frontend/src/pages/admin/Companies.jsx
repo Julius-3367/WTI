@@ -46,12 +46,12 @@ const Companies = () => {
   const [error, setError] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState(null);
-  
+
   // Pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  
+
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [industryFilter, setIndustryFilter] = useState('');
@@ -173,7 +173,7 @@ const Companies = () => {
               ),
             }}
           />
-          
+
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Industry</InputLabel>
             <Select

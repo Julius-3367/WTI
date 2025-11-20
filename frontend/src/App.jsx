@@ -25,20 +25,31 @@ import AdminUsers from './pages/admin/Users';
 import CreateEditUser from './pages/admin/CreateEditUser';
 import AdminCourses from './pages/admin/Courses';
 import AdminCreateCourse from './pages/admin/CreateCourse';
+import AdminEnrollments from './pages/admin/Enrollments';
 import AdminCompanies from './pages/admin/Companies';
+import AdminCandidateDetails from './pages/admin/CandidateDetails';
+import AdminCandidates from './pages/admin/Candidates';
 import CreateEditCompany from './pages/admin/CompanyForm';
 import CompanyDetails from './pages/admin/CompanyDetails';
 import AdminReports from './pages/admin/Reports';
 import AdminSettings from './pages/admin/Settings';
-import AdminAttendance from './pages/admin/Attendance';
+import AttendanceManagement from './pages/admin/AttendanceManagement';
+import AppealsManagement from './pages/admin/AppealsManagement';
 import CertificateManagement from './pages/admin/CertificateManagement';
-import CandidateDashboard from './pages/candidate/Dashboard';
-import CandidateCourses from './pages/candidate/Courses';
+import CandidateDashboard from './pages/candidate/CandidateDashboard';
+import CandidateCourses from './pages/candidate/MyCourses';
+import CandidateDocuments from './pages/candidate/Documents';
+import CandidateAttendance from './pages/candidate/AttendancePage';
+import CandidateAssessments from './pages/candidate/AssessmentsPage';
+import CandidateCertificates from './pages/candidate/CertificatesPage';
+import CandidateProfile from './pages/candidate/ProfileSettings';
 import CandidateCourseDetails from './pages/candidate/CourseDetails';
+import PlacementPage from './pages/candidate/PlacementPage';
 import AdminCourseDetails from './pages/admin/CourseDetails';
 import CandidateCalendar from './pages/candidate/Calendar';
 import CandidateNotifications from './pages/candidate/Notifications';
 import TrainerDashboard from './pages/trainer/Dashboard';
+import TrainerAttendance from './pages/trainer/Attendance';
 import AgentDashboard from './pages/agent/Dashboard';
 import BrokerDashboard from './pages/broker/Dashboard';
 import EmployerDashboard from './pages/employer/Dashboard';
@@ -299,11 +310,15 @@ const App = () => {
                   <Route path="courses/:courseId" element={<AdminCourseDetails />} />
                   <Route path="courses/new" element={<AdminCreateCourse />} />
                   <Route path="courses/:id/edit" element={<AdminCreateCourse />} />
+                  <Route path="enrollments" element={<AdminEnrollments />} />
+                  <Route path="candidates" element={<AdminCandidates />} />
+                  <Route path="candidates/:id" element={<AdminCandidateDetails />} />
                   <Route path="companies" element={<AdminCompanies />} />
                   <Route path="companies/new" element={<CreateEditCompany />} />
                   <Route path="companies/:companyId" element={<CompanyDetails />} />
                   <Route path="companies/:companyId/edit" element={<CreateEditCompany />} />
-                  <Route path="attendance" element={<AdminAttendance />} />
+                  <Route path="attendance" element={<AttendanceManagement />} />
+                  <Route path="appeals" element={<AppealsManagement />} />
                   <Route path="certificates" element={<CertificateManagement />} />
                   <Route path="companies" element={<AdminCompanies />} />
                   <Route path="reports" element={<AdminReports />} />
@@ -324,6 +339,13 @@ const App = () => {
                   <Route path="dashboard" element={<CandidateDashboard />} />
                   <Route path="courses" element={<CandidateCourses />} />
                   <Route path="courses/:courseId" element={<CandidateCourseDetails />} />
+                  <Route path="documents" element={<CandidateDocuments />} />
+                  <Route path="attendance" element={<CandidateAttendance />} />
+                  <Route path="assessments" element={<CandidateAssessments />} />
+                  <Route path="certificates" element={<CandidateDocuments />} />
+                  <Route path="placement" element={<PlacementPage />} />
+                  <Route path="jobs" element={<PlacementPage />} />
+                  <Route path="profile" element={<CandidateProfile />} />
                   <Route path="calendar" element={<CandidateCalendar />} />
                   <Route path="notifications" element={<CandidateNotifications />} />
                   <Route index element={<Navigate to="dashboard" replace />} />
@@ -338,7 +360,11 @@ const App = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.TRAINER]}>
               <AppLayout>
-                <TrainerDashboard />
+                <Routes>
+                  <Route path="dashboard" element={<TrainerDashboard />} />
+                  <Route path="attendance" element={<TrainerAttendance />} />
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                </Routes>
               </AppLayout>
             </ProtectedRoute>
           }

@@ -83,7 +83,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
     description: '',
     objectives: [],
     prerequisites: [],
-    
+
     // Step 2: Schedule & Duration
     startDate: null,
     endDate: null,
@@ -93,21 +93,21 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
     durationUnit: 'weeks',
     schedule: 'weekdays',
     customSchedule: [],
-    
+
     // Step 3: Capacity & Fees
     maxCapacity: '',
     minCapacity: '',
     courseFee: '',
-  currency: 'KES',
+    currency: 'KES',
     registrationDeadline: null,
     allowWaitlist: false,
-    
+
     // Step 4: Trainer Assignment
     primaryTrainer: null,
     secondaryTrainers: [],
-    
+
     // Step 5: Materials
-  // materials and syllabus removed — materials upload moved out of wizard
+    // materials and syllabus removed — materials upload moved out of wizard
   });
 
   const [trainers, setTrainers] = useState([]);
@@ -130,6 +130,8 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
 
   const getCurrencyAdornment = (currency) => {
     switch (currency) {
+      case 'KES':
+        return 'KSh';
       case 'USD':
         return '$';
       case 'EUR':
@@ -138,9 +140,10 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
         return '£';
       case 'CAD':
         return '$';
-      case 'KES':
+      case 'AED':
+        return 'د.إ';
       default:
-        return 'KES';
+        return 'KSh';
     }
   };
 
@@ -156,15 +159,15 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
       if (initialData.registrationDeadline) converted.registrationDeadline = new Date(initialData.registrationDeadline);
       setFormData((prev) => ({ ...prev, ...converted }));
     }
-    
+
     // Fetch trainers
     fetchTrainers();
-    
+
     // Auto-save setup
     const autoSaveInterval = setInterval(() => {
       handleAutoSave();
     }, 30000); // Auto-save every 30 seconds
-    
+
     return () => clearInterval(autoSaveInterval);
   }, []);
 
@@ -172,7 +175,9 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
     try {
       const response = await adminService.getAllUsers({ role: 'trainer', status: 'ACTIVE' });
       if (response.data.success) {
-        const trainersData = response.data.data.map(user => ({
+        // The response structure is response.data.data.users (not just response.data.data)
+        const usersList = response.data.data.users || response.data.data || [];
+        const trainersData = usersList.map(user => ({
           id: user.id,
           name: `${user.firstName} ${user.lastName}`,
           email: user.email,
@@ -279,7 +284,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
     try {
       setLoading(true);
       setError('');
-      
+
       // Prepare course data for API
       const courseData = {
         title: formData.title,
@@ -289,7 +294,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
         objectives: formData.objectives,
         prerequisites: formData.prerequisites,
         startDate: formData.startDate,
-          endDate: formData.endDate,
+        endDate: formData.endDate,
         startTime: formData.startTime,
         endTime: formData.endTime,
         duration: formData.duration,
@@ -321,10 +326,10 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
       courseData.registrationDeadline = normalizeDate(courseData.registrationDeadline);
 
       // Call API to create course
-      const response = mode === 'edit' 
+      const response = mode === 'edit'
         ? await adminService.updateCourse(initialData?.id, courseData)
         : await adminService.createCourse(courseData);
-      
+
       if (response.data.success) {
         setSuccess(mode === 'edit' ? 'Course updated successfully!' : 'Course created successfully!');
         localStorage.removeItem('courseDraft');
@@ -342,7 +347,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
           // Non-fatal — log and continue navigation
           console.warn('Failed to ensure course active after create:', err);
         }
-        
+
         // Clear any prior error and navigate to the created course's detail page
         setError('');
         const created = response.data.data?.course || response.data.data;
@@ -382,7 +387,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                 placeholder="e.g., Advanced Web Development"
               />
             </Grid>
-            
+
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
@@ -394,7 +399,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                 inputProps={{ style: { textTransform: 'uppercase' } }}
               />
             </Grid>
-            
+
             <Grid item xs={12} md={6}>
               <FormControl fullWidth required>
                 <InputLabel>Category</InputLabel>
@@ -411,7 +416,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                 </Select>
               </FormControl>
             </Grid>
-            
+
             <Grid item xs={12}>
               <RichTextEditor
                 label="Course Description"
@@ -419,7 +424,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                 onChange={(value) => setFormData({ ...formData, description: value })}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Autocomplete
                 multiple
@@ -442,7 +447,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                 )}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Autocomplete
                 multiple
@@ -467,7 +472,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
             </Grid>
           </Grid>
         );
-        
+
       case 1:
         return (
           <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -480,7 +485,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   renderInput={(params) => <TextField {...params} fullWidth required />}
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <DatePicker
                   label="End Date"
@@ -490,7 +495,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   minDate={formData.startDate}
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <TimePicker
                   label="Start Time"
@@ -499,7 +504,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   renderInput={(params) => <TextField {...params} fullWidth />}
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <TimePicker
                   label="End Time"
@@ -508,7 +513,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   renderInput={(params) => <TextField {...params} fullWidth />}
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
@@ -520,7 +525,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   inputProps={{ min: 1 }}
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
                   <InputLabel>Duration Unit</InputLabel>
@@ -535,7 +540,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   </Select>
                 </FormControl>
               </Grid>
-              
+
               <Grid item xs={12}>
                 <FormControl fullWidth>
                   <InputLabel>Schedule Type</InputLabel>
@@ -551,7 +556,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   </Select>
                 </FormControl>
               </Grid>
-              
+
               {formData.schedule === 'custom' && (
                 <Grid item xs={12}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -577,7 +582,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
             </Grid>
           </LocalizationProvider>
         );
-        
+
       case 2:
         return (
           <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -594,7 +599,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   helperText="Maximum number of students"
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
@@ -606,7 +611,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   helperText="Minimum students to start course"
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
@@ -623,7 +628,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   }}
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
                   <InputLabel>Currency</InputLabel>
@@ -632,14 +637,16 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                     label="Currency"
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                   >
+                    <MenuItem value="KES">KES (KSh)</MenuItem>
                     <MenuItem value="USD">USD ($)</MenuItem>
                     <MenuItem value="EUR">EUR (€)</MenuItem>
                     <MenuItem value="GBP">GBP (£)</MenuItem>
                     <MenuItem value="CAD">CAD ($)</MenuItem>
+                    <MenuItem value="AED">AED (د.إ)</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <DatePicker
                   label="Registration Deadline"
@@ -649,7 +656,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                   maxDate={formData.startDate}
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <FormControlLabel
                   control={
@@ -664,7 +671,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
             </Grid>
           </LocalizationProvider>
         );
-        
+
       case 3:
         return (
           <Grid container spacing={3}>
@@ -674,7 +681,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
               </Typography>
               <Divider sx={{ mb: 2 }} />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Autocomplete
                 options={trainers}
@@ -701,14 +708,14 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
                 )}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
                 Secondary Trainers (Optional)
               </Typography>
               <Divider sx={{ mb: 2 }} />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Autocomplete
                 multiple
@@ -735,7 +742,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
             </Grid>
           </Grid>
         );
-        
+
       default:
         return null;
     }
@@ -812,7 +819,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
             >
               Back
             </Button>
-            
+
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button
                 variant="outlined"
@@ -821,7 +828,7 @@ const CourseCreationWizard = ({ initialData = null, mode = 'create' }) => {
               >
                 Save Draft
               </Button>
-              
+
               {activeStep === steps.length - 1 ? (
                 <Button
                   variant="contained"

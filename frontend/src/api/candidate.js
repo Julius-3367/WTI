@@ -51,6 +51,107 @@ export const candidateService = {
     const res = await api.get('/candidate/profile');
     return unwrap(res);
   },
+
+  // Update candidate profile
+  async updateProfile(profileData) {
+    const res = await api.patch('/candidate/profile', profileData);
+    return unwrap(res);
+  },
+
+  // Get candidate documents
+  async getDocuments() {
+    const res = await api.get('/candidate/documents');
+    return unwrap(res);
+  },
+
+  // Upload document
+  async uploadDocument(formData) {
+    // Use native fetch for file uploads to avoid axios transforming FormData
+    const token = localStorage.getItem('accessToken');
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+    const response = await fetch(`${baseURL}/candidate/documents`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Don't set Content-Type - let browser set it with boundary
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Upload failed');
+    }
+
+    const result = await response.json();
+    return unwrap(result);
+  },
+
+  // Delete document
+  async deleteDocument(documentId) {
+    const res = await api.delete(`/candidate/documents/${documentId}`);
+    return unwrap(res);
+  },
+
+  // Get attendance records
+  async getAttendance(courseId) {
+    const res = await api.get('/candidate/attendance', { params: { courseId } });
+    return unwrap(res);
+  },
+
+  // Get assessments
+  async getAssessments(courseId) {
+    const res = await api.get('/candidate/assessments', { params: { courseId } });
+    return unwrap(res);
+  },
+
+  // Get certificates
+  async getCertificates() {
+    const res = await api.get('/candidate/certificates');
+    return unwrap(res);
+  },
+
+  // Get available courses for enrollment
+  async getAvailableCourses() {
+    const res = await api.get('/candidate/courses/available');
+    return unwrap(res);
+  },
+
+  // Enroll in course
+  async enrollInCourse(courseId) {
+    const res = await api.post('/candidate/enrollments', { courseId });
+    return unwrap(res);
+  },
+
+  // NEW COMPREHENSIVE ENDPOINTS
+
+  // Get detailed attendance records with stats
+  async getAttendanceRecords(month, year) {
+    const params = {};
+    if (month) params.month = month;
+    if (year) params.year = year;
+    const res = await api.get('/candidate/attendance/records', { params });
+    return unwrap(res);
+  },
+
+  // Get comprehensive assessment results
+  async getAssessmentResults() {
+    const res = await api.get('/candidate/assessments/results');
+    return unwrap(res);
+  },
+
+  // Get certificates and documents
+  async getCertificatesAndDocuments() {
+    const res = await api.get('/candidate/certificates-documents');
+    return unwrap(res);
+  },
+
+  // Get placement and job application data
+  async getPlacementData() {
+    const res = await api.get('/candidate/placement');
+    return unwrap(res);
+  },
 };
 
 export default candidateService;

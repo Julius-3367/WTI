@@ -31,6 +31,7 @@ import {
   XMarkIcon,
   BellIcon,
   UserCircleIcon,
+  UserIcon,
   ArrowRightOnRectangleIcon,
   ChevronDownIcon,
   HomeIcon,
@@ -45,9 +46,14 @@ import {
   TrophyIcon,
   CalendarIcon,
   QuestionMarkCircleIcon,
+  ClipboardDocumentListIcon,
+  ScaleIcon,
 } from '@heroicons/react/24/outline';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser } from '../features/auth/authThunks';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const BACKEND_URL = API_BASE_URL.replace('/api', '');
 
 const AppLayout = ({ children }) => {
   const theme = useTheme();
@@ -88,8 +94,20 @@ const AppLayout = ({ children }) => {
     return `${first}${last}`.toUpperCase();
   };
 
+  const getUserPhotoUrl = () => {
+    // Check if user has candidate profile with photo
+    if (user?.candidate?.profilePhotoUrl) {
+      return `${BACKEND_URL}${user.candidate.profilePhotoUrl}`;
+    }
+    return null;
+  };
+
   const getRoleColor = (role) => {
-    switch (role?.toLowerCase()) {
+    // role might be an object or a string
+    const roleName = typeof role === 'object' ? role?.name : role;
+    const roleStr = typeof roleName === 'string' ? roleName.toLowerCase() : '';
+
+    switch (roleStr) {
       case 'admin':
         return theme.palette.error;
       case 'candidate':
@@ -109,11 +127,19 @@ const AppLayout = ({ children }) => {
 
   // Navigation items based on user role
   const getNavigationItems = () => {
-    const role = user?.role?.toLowerCase();
+    // user.role is an object with { id, name, ... }, so we need role.name
+    const roleName = user?.role?.name || user?.role;
+    const role = typeof roleName === 'string' ? roleName.toLowerCase() : 'candidate';
     const baseItems = [
       {
         label: 'Dashboard',
-        path: `/dashboard/${role}`,
+        path: role === 'candidate' ? '/candidate/dashboard' :
+          role === 'admin' ? '/admin/dashboard' :
+            role === 'trainer' ? '/trainer/dashboard' :
+              role === 'agent' ? '/agent/dashboard' :
+                role === 'broker' ? '/broker/dashboard' :
+                  role === 'employer' ? '/employer/dashboard' :
+                    `/dashboard/${role}`,
         icon: HomeIcon,
       },
     ];
@@ -121,21 +147,24 @@ const AppLayout = ({ children }) => {
     const roleSpecificItems = {
       admin: [
         { label: 'Users', path: '/admin/users', icon: UserGroupIcon },
+        { label: 'Candidates', path: '/admin/candidates', icon: UserGroupIcon },
         { label: 'Courses', path: '/admin/courses', icon: AcademicCapIcon },
-        { label: 'Attendance', path: '/admin/attendance', icon: CalendarIcon },
-        { label: 'Certificates', path: '/admin/certificates', icon: TrophyIcon },
+        { label: 'Enrollments', path: '/admin/enrollments', icon: ClipboardDocumentListIcon },
+        { label: 'Documents', path: '/admin/certificates', icon: DocumentTextIcon },
         { label: 'Companies', path: '/admin/companies', icon: BuildingOfficeIcon },
         { label: 'Reports', path: '/admin/reports', icon: ChartBarIcon },
         { label: 'Settings', path: '/admin/settings', icon: Cog6ToothIcon },
       ],
       candidate: [
         { label: 'My Courses', path: '/candidate/courses', icon: AcademicCapIcon },
-        { label: 'Job Search', path: '/candidate/jobs', icon: BriefcaseIcon },
-        { label: 'Applications', path: '/candidate/applications', icon: DocumentTextIcon },
-        { label: 'Certificates', path: '/candidate/certificates', icon: TrophyIcon },
-        { label: 'Calendar', path: '/candidate/calendar', icon: CalendarIcon },
+        { label: 'Attendance', path: '/candidate/attendance', icon: CalendarIcon },
+        { label: 'Assessments', path: '/candidate/assessments', icon: ChartBarIcon },
+        { label: 'Documents', path: '/candidate/certificates', icon: DocumentTextIcon },
+        { label: 'Profile', path: '/candidate/profile', icon: UserIcon },
       ],
       trainer: [
+        { label: 'Dashboard', path: '/trainer/dashboard', icon: HomeIcon },
+        { label: 'Attendance', path: '/trainer/attendance', icon: CalendarIcon },
         { label: 'My Courses', path: '/trainer/courses', icon: AcademicCapIcon },
         { label: 'Students', path: '/trainer/students', icon: UserGroupIcon },
         { label: 'Assessments', path: '/trainer/assessments', icon: DocumentTextIcon },
@@ -224,6 +253,7 @@ const AppLayout = ({ children }) => {
       <Box sx={{ p: 3, borderBottom: `1px solid ${theme.palette.divider}` }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <Avatar
+            src={getUserPhotoUrl()}
             sx={{
               bgcolor: getRoleColor(user?.role).main,
               color: 'white',
@@ -240,7 +270,11 @@ const AppLayout = ({ children }) => {
             </Typography>
             <Chip
               size="small"
-              label={user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)}
+              label={
+                typeof user?.role === 'object'
+                  ? user?.role?.name
+                  : user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)
+              }
               sx={{
                 bgcolor: getRoleColor(user?.role).light,
                 color: getRoleColor(user?.role).dark,
@@ -366,6 +400,7 @@ const AppLayout = ({ children }) => {
             endIcon={<ChevronDownIcon style={{ width: 16, height: 16 }} />}
           >
             <Avatar
+              src={getUserPhotoUrl()}
               sx={{
                 bgcolor: getRoleColor(user?.role).main,
                 width: 32,

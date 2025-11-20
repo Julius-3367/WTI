@@ -7,60 +7,34 @@ import {
   CardContent,
   Paper,
   Button,
-  Avatar,
   Chip,
   List,
   ListItem,
-  ListItemAvatar,
   ListItemText,
   Divider,
   LinearProgress,
   CircularProgress,
   Alert,
-  Container,
-  Stack,
-  Badge,
   IconButton,
-  Menu,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
+  Avatar,
+  CardActions,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 import {
-  HomeIcon,
-  UserIcon,
-  CalendarIcon,
-  DocumentTextIcon,
-  TrophyIcon,
-  DocumentIcon,
-  BriefcaseIcon,
-  QuestionMarkCircleIcon,
-  BellIcon,
-  ArrowRightOnRectangleIcon,
-  Bars3Icon,
-  XMarkIcon,
-  EyeIcon,
-  PlayIcon,
-  BookOpenIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  MapPinIcon,
-  StarIcon,
-} from '@heroicons/react/24/outline';
-import {
-  CheckCircleIcon as CheckCircleSolid,
-  ArrowTrendingUpIcon,
-  ClockIcon as ClockSolid,
-  ExclamationTriangleIcon,
-  AcademicCapIcon,
-} from '@heroicons/react/24/solid';
+  School as CourseIcon,
+  Assignment as AssignmentIcon,
+  EmojiEvents as TrophyIcon,
+  TrendingUp as TrendingIcon,
+  CalendarToday as CalendarIcon,
+  Description as DocumentIcon,
+  CheckCircle as CompletedIcon,
+  ArrowForward as ArrowIcon,
+  Notifications as NotificationsIcon,
+  AccessTime as TimeIcon,
+} from '@mui/icons-material';
+import { format, isToday, isTomorrow, isThisWeek } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import { useSnackbar } from 'notistack';
+import candidateService from '../../api/candidate';
 import {
   LineChart,
   Line,
@@ -103,7 +77,7 @@ const CandidateDashboard = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Fetch dashboard data and recommended jobs in parallel
       const [dashboardData, jobsData] = await Promise.all([
         candidateService.getDashboardData(),
@@ -613,8 +587,8 @@ const CandidateDashboard = () => {
                           <Button size="small" variant="outlined" onClick={() => handleJobView(job)}>
                             View Details
                           </Button>
-                          <Button 
-                            size="small" 
+                          <Button
+                            size="small"
                             variant="contained"
                             onClick={() => handleJobApply(job.id)}
                             disabled={applying}
@@ -709,9 +683,9 @@ const CandidateDashboard = () => {
                     </Paper>
                   ))}
                 </Stack>
-                <Button 
-                  variant="text" 
-                  fullWidth 
+                <Button
+                  variant="text"
+                  fullWidth
                   sx={{ mt: 2 }}
                   onClick={() => navigate('/candidate/calendar')}
                 >
@@ -740,12 +714,12 @@ const CandidateDashboard = () => {
                               sx={{
                                 bgcolor:
                                   notification.type === 'success' ? theme.palette.success.light :
-                                  notification.type === 'warning' ? theme.palette.warning.light :
-                                  theme.palette.info.light,
+                                    notification.type === 'warning' ? theme.palette.warning.light :
+                                      theme.palette.info.light,
                                 color:
                                   notification.type === 'success' ? theme.palette.success.main :
-                                  notification.type === 'warning' ? theme.palette.warning.main :
-                                  theme.palette.info.main,
+                                    notification.type === 'warning' ? theme.palette.warning.main :
+                                      theme.palette.info.main,
                                 width: 32,
                                 height: 32,
                               }}
@@ -776,9 +750,9 @@ const CandidateDashboard = () => {
                     </React.Fragment>
                   ))}
                 </List>
-                <Button 
-                  variant="text" 
-                  fullWidth 
+                <Button
+                  variant="text"
+                  fullWidth
                   sx={{ mt: 2 }}
                   onClick={() => navigate('/candidate/notifications')}
                 >
@@ -848,7 +822,7 @@ const CandidateDashboard = () => {
               <Button onClick={() => setJobDialogOpen(false)}>
                 Close
               </Button>
-              <Button 
+              <Button
                 variant="contained"
                 onClick={() => handleJobApply(selectedJob.id)}
                 disabled={applying}

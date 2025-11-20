@@ -1,3 +1,5 @@
+console.log('🚀 Main.jsx loading...');
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -6,40 +8,52 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './app/store';
 
+console.log('📦 Imports loaded, store:', store ? 'OK' : 'MISSING');
+
 // Import theme provider
 import ThemeProvider from './providers/ThemeProvider.jsx';
 import { theme } from './theme/theme.js';
 
+console.log('🎨 Theme loaded:', theme ? 'OK' : 'MISSING');
+
 // Import main app component
 import App from './App.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
+
+console.log('📱 App component loaded:', App ? 'OK' : 'MISSING');
+console.log('🛡️ ErrorBoundary loaded:', ErrorBoundary ? 'OK' : 'MISSING');
 
 // Import Tailwind CSS (ensure it loads first)
 import './index.css';
+
+console.log('💅 Styles imported');
 
 /**
  * Enhanced App Wrapper
  */
 const AppWrapper = () => {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <SnackbarProvider
-          maxSnack={3}
-          anchorOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
-          }}
-          autoHideDuration={5000}
-          preventDuplicate
-          dense
-          style={{
-            fontFamily: theme.typography.fontFamily,
-          }}
-        >
-          <App />
-        </SnackbarProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <BrowserRouter>
+          <SnackbarProvider
+            maxSnack={3}
+            anchorOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            autoHideDuration={5000}
+            preventDuplicate
+            dense
+            style={{
+              fontFamily: theme.typography.fontFamily,
+            }}
+          >
+            <App />
+          </SnackbarProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 
@@ -60,11 +74,16 @@ const initializeApp = async () => {
     // Get root element
     const rootElement = document.getElementById('root');
     if (!rootElement) {
+      console.error('❌ Root element not found!');
       throw new Error('Root element not found');
     }
 
+    console.log('✅ Root element found');
+
     // Create React root and render app
     const root = ReactDOM.createRoot(rootElement);
+
+    console.log('🎯 Rendering app...');
 
     root.render(
       <React.StrictMode>
@@ -88,55 +107,17 @@ const initializeApp = async () => {
     });
   } catch (error) {
     console.error('❌ Failed to initialize app:', error);
-
-    // Fallback: render error message
+    // Display error in DOM if React fails to render
     const rootElement = document.getElementById('root');
     if (rootElement) {
       rootElement.innerHTML = `
-        <div style="
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 100vh;
-          font-family: 'Inter', sans-serif;
-          background-color: #f8fafc;
-          color: #1e293b;
-          text-align: center;
-          padding: 20px;
-        ">
-          <div>
-            <h1 style="color: #ef4444; font-size: 1.5rem; margin-bottom: 1rem;">
-              Failed to Load Application
-            </h1>
-            <p style="margin-bottom: 1rem; color: #64748b;">
-              There was an error loading the UMSL Labor Mobility platform.
-            </p>
-            <button
-              onclick="window.location.reload()"
-              style="
-                background-color: #3B82F6;
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                border-radius: 8px;
-                font-weight: 500;
-                cursor: pointer;
-                font-size: 0.875rem;
-              "
-            >
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif;">
+          <div style="text-align: center; padding: 2rem;">
+            <h1 style="color: #ef4444; margin-bottom: 1rem;">Failed to Load Application</h1>
+            <p style="color: #666; margin-bottom: 1rem;">${error.message}</p>
+            <button onclick="window.location.reload()" style="padding: 0.5rem 1rem; background: #1e40af; color: white; border: none; border-radius: 4px; cursor: pointer;">
               Reload Page
             </button>
-            <details style="margin-top: 2rem; text-align: left;">
-              <summary style="cursor: pointer; color: #64748b;">Technical Details</summary>
-              <pre style="
-                background: #f1f5f9;
-                padding: 1rem;
-                border-radius: 6px;
-                margin-top: 0.5rem;
-                font-size: 0.75rem;
-                overflow: auto;
-              ">${error.message}</pre>
-            </details>
           </div>
         </div>
       `;

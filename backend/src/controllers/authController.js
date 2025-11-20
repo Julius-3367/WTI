@@ -395,7 +395,19 @@ const getProfile = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      include: { role: true }
+      include: { 
+        role: true,
+        candidate: {
+          select: {
+            id: true,
+            fullName: true,
+            profilePhotoUrl: true,
+            gender: true,
+            dob: true,
+            county: true,
+          }
+        }
+      }
     });
 
     if (!user) {

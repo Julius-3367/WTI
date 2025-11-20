@@ -36,10 +36,10 @@ async function generateTestCertificates() {
     }
 
     const certificates = [];
-    
+
     for (let i = 0; i < enrollmentsToUse.length; i++) {
       const enrollment = enrollmentsToUse[i];
-      
+
       // Check if certificate already exists for this enrollment
       const existing = await prisma.certificate.findFirst({
         where: {

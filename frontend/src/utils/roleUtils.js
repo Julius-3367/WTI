@@ -127,6 +127,8 @@ export const getNavigationItems = (role) => {
     [ROLES.ADMIN]: [
       { label: 'Candidates', path: '/admin/candidates', icon: 'People' },
       { label: 'Courses', path: '/admin/courses', icon: 'School' },
+      { label: 'Attendance', path: '/admin/attendance', icon: 'EventNote' },
+      { label: 'Appeals', path: '/admin/appeals', icon: 'Gavel' },
       { label: 'Agents', path: '/admin/agents', icon: 'Business' },
       { label: 'Brokers', path: '/admin/brokers', icon: 'AccountBalance' },
       { label: 'Users', path: '/admin/users', icon: 'ManageAccounts' },

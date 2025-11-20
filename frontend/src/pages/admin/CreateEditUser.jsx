@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -20,7 +20,21 @@ const CreateEditUser = () => {
   const { id } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
+  const location = useLocation();
   const { enqueueSnackbar } = useSnackbar();
+
+  // Map role names to roleIds
+  const getRoleId = (roleName) => {
+    const roleMap = {
+      'ADMIN': 1,
+      'CANDIDATE': 2,
+      'TRAINER': 3,
+      'AGENT': 4,
+      'BROKER': 5,
+      'EMPLOYER': 6,
+    };
+    return roleMap[roleName] || 2; // Default to CANDIDATE
+  };
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -30,7 +44,7 @@ const CreateEditUser = () => {
     firstName: '',
     lastName: '',
     phone: '',
-    roleId: 2,
+    roleId: location.state?.defaultRole ? getRoleId(location.state.defaultRole) : 2,
   });
 
   useEffect(() => {

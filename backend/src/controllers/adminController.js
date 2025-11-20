@@ -2174,8 +2174,8 @@ const updateCertificate = async (req, res) => {
       .filter(line => !line.startsWith('CUSTOM_DATA:'))
       .join('\n')
       .trim();
-    
-    const newRemarks = baseRemarks 
+
+    const newRemarks = baseRemarks
       ? `${baseRemarks}\n${customDataString}`
       : customDataString;
 
@@ -3563,13 +3563,13 @@ const getEnrollments = async (req, res) => {
     });
 
     const where = {};
-    
+
     // Only filter by tenantId if it exists
     if (user?.tenantId) {
       where.tenantId = user.tenantId;
     }
 
-    if (status) {
+    if (status && typeof status === 'string') {
       where.enrollmentStatus = status.toUpperCase();
     }
 

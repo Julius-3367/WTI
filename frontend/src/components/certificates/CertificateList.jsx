@@ -787,7 +787,7 @@ const CertificateList = () => {
                 {useCustomName ? 'Yes' : 'No'}
               </Button>
             </Stack>
-            
+
             {useCustomName && (
               <TextField
                 label="Custom Name for Certificate"

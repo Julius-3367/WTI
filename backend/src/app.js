@@ -16,6 +16,8 @@ const authGoogleRoutes = require('./routes/authGoogle');
 const candidateRoutes = require('./routes/candidateRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const trainerRoutes = require('./routes/trainerRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const supportTicketRoutes = require('./routes/supportTicketRoutes');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -72,6 +74,9 @@ if (process.env.NODE_ENV === 'production') {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Cookie parser middleware
 app.use(cookieParser());
 
@@ -82,67 +87,67 @@ if (false && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback'
   },
-  async (accessToken, refreshToken, profile, done) => {
-    try {
-      const email = profile.emails[0].value;
-      const firstName = profile.name.givenName;
-      const lastName = profile.name.familyName;
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const email = profile.emails[0].value;
+        const firstName = profile.name.givenName;
+        const lastName = profile.name.familyName;
 
-      // Check if user exists
-      let user = await prisma.user.findUnique({
-        where: { email },
-        include: { role: true }
-      });
-
-      if (!user) {
-        // Auto-create user with CANDIDATE role
-        const candidateRole = await prisma.role.findUnique({
-          where: { name: 'Candidate' }
-        });
-
-        if (!candidateRole) {
-          return done(new Error('Candidate role not found'), null);
-        }
-
-        user = await prisma.user.create({
-          data: {
-            email,
-            firstName,
-            lastName,
-            roleId: candidateRole.id,
-            isActive: true
-          },
+        // Check if user exists
+        let user = await prisma.user.findUnique({
+          where: { email },
           include: { role: true }
         });
 
-        // Log activity
-        await createActivityLog({
-          userId: user.id,
-          action: 'USER_REGISTERED_GOOGLE',
-          resource: 'User',
-          details: { email, provider: 'google' }
+        if (!user) {
+          // Auto-create user with CANDIDATE role
+          const candidateRole = await prisma.role.findUnique({
+            where: { name: 'Candidate' }
+          });
+
+          if (!candidateRole) {
+            return done(new Error('Candidate role not found'), null);
+          }
+
+          user = await prisma.user.create({
+            data: {
+              email,
+              firstName,
+              lastName,
+              roleId: candidateRole.id,
+              isActive: true
+            },
+            include: { role: true }
+          });
+
+          // Log activity
+          await createActivityLog({
+            userId: user.id,
+            action: 'USER_REGISTERED_GOOGLE',
+            resource: 'User',
+            details: { email, provider: 'google' }
+          });
+        } else {
+          // Log login activity
+          await createActivityLog({
+            userId: user.id,
+            action: 'USER_LOGIN_GOOGLE',
+            resource: 'Auth',
+            details: { email, provider: 'google' }
+          });
+        }
+
+        // Update last login
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date() }
         });
-      } else {
-        // Log login activity
-        await createActivityLog({
-          userId: user.id,
-          action: 'USER_LOGIN_GOOGLE',
-          resource: 'Auth',
-          details: { email, provider: 'google' }
-        });
+
+        return done(null, user);
+      } catch (error) {
+        return done(error, null);
       }
-
-      // Update last login
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { lastLogin: new Date() }
-      });
-
-      return done(null, user);
-    } catch (error) {
-      return done(error, null);
-    }
-  }));
+    }));
 } else {
   console.log('⚠️  Google OAuth not configured - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET not provided');
 }
@@ -186,8 +191,8 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: process.env.NODE_ENV === 'production' 
-          ? 'https://api.labourmobility.com' 
+        url: process.env.NODE_ENV === 'production'
+          ? 'https://api.labourmobility.com'
           : `http://localhost:${process.env.PORT || 5000}`,
         description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       }
@@ -233,6 +238,8 @@ app.use('/api/auth', authGoogleRoutes);
 app.use('/api/candidate', candidateRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/trainer', trainerRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/support-tickets', supportTicketRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

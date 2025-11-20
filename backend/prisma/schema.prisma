@@ -2,14 +2,12 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["referentialIntegrity"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider             = "mysql"
-  url                  = env("DATABASE_URL")
-  referentialIntegrity = "prisma"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 /// -----------------------------
@@ -45,6 +43,13 @@ enum AttendanceStatus {
   ABSENT
   LATE
   EXCUSED
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
 }
 
 enum AssessmentResult {
@@ -137,6 +142,7 @@ model Tenant {
   companies            Company[]
   enrollments          Enrollment[]
   attendanceRecords    AttendanceRecord[]
+  attendanceAppeals    AttendanceAppeal[]
   assessments          Assessment[]
   certificates         Certificate[]
   certificateTemplates CertificateTemplate[]
@@ -149,6 +155,8 @@ model Tenant {
   notifications        Notification[]
   settings             Setting[]
   reportJobs           ReportJob[]
+  messages             Message[]
+  supportTickets       SupportTicket[]
 
   @@map("tenants")
 }
@@ -237,6 +245,12 @@ model User {
   settingsUpdated      Setting[]             @relation("SettingUpdatedBy")
   companiesCreated     Company[]             @relation("CompanyCreatedBy")
   companiesUpdated     Company[]             @relation("CompanyUpdatedBy")
+  messagesSent         Message[]             @relation("MessageSender")
+  messagesReceived     Message[]             @relation("MessageRecipient")
+  ticketsCreated       SupportTicket[]       @relation("TicketCreatedBy")
+  ticketsAssigned      SupportTicket[]       @relation("TicketAssignedTo")
+  ticketComments       SupportTicketComment[]
+  appealsReviewed      AttendanceAppeal[]    @relation("AppealReviewer")
 
   @@map("users")
 }
@@ -407,6 +421,7 @@ model Candidate {
   placements    Placement[]
   documents     CandidateDocument[]
   payments      Payment[]
+  appeals       AttendanceAppeal[]
 
   @@index([tenantId, status])
   @@index([tenantId, fullName])
@@ -534,14 +549,43 @@ model AttendanceRecord {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
-  tenant         Tenant     @relation(fields: [tenantId], references: [id])
-  course         Course     @relation(fields: [courseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  enrollment     Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  recordedByUser User?      @relation("AttendanceRecordedBy", fields: [recordedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant         Tenant              @relation(fields: [tenantId], references: [id])
+  course         Course              @relation(fields: [courseId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  enrollment     Enrollment          @relation(fields: [enrollmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recordedByUser User?               @relation("AttendanceRecordedBy", fields: [recordedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  appeals        AttendanceAppeal[]
 
   @@unique([tenantId, enrollmentId, date])
   @@index([tenantId, courseId, date])
   @@map("attendance_records")
+}
+
+/// Attendance Appeals - Candidates can appeal attendance records
+model AttendanceAppeal {
+  id                  Int           @id @default(autoincrement())
+  tenantId            Int
+  attendanceRecordId  Int
+  candidateId         Int
+  reason              String        @db.Text
+  supportingDocuments String?       @db.Text // JSON array of file paths
+  status              AppealStatus  @default(PENDING)
+  reviewedBy          Int?
+  reviewedAt          DateTime?
+  reviewerComments    String?       @db.Text
+  originalStatus      AttendanceStatus
+  requestedStatus     AttendanceStatus?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  attendanceRecord AttendanceRecord @relation(fields: [attendanceRecordId], references: [id], onDelete: Cascade)
+  candidate        Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  reviewer         User?            @relation("AppealReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, candidateId])
+  @@index([tenantId, status])
+  @@index([attendanceRecordId])
+  @@map("attendance_appeals")
 }
 
 /// Report Jobs (persisted)
@@ -816,4 +860,86 @@ model Setting {
 
   @@unique([tenantId, key])
   @@map("settings")
+}
+
+model Message {
+  id           Int            @id @default(autoincrement())
+  tenantId     Int
+  senderId     Int
+  recipientId  Int
+  subject      String
+  message      String         @db.Text
+  isRead       Boolean        @default(false)
+  readAt       DateTime?
+  parentId     Int?           // For replies/threading
+  attachments  Json?          // Array of attachment URLs
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  sender    User    @relation("MessageSender", fields: [senderId], references: [id], onDelete: NoAction)
+  recipient User    @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: NoAction)
+  parent    Message? @relation("MessageReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies   Message[] @relation("MessageReplies")
+
+  @@index([tenantId, recipientId, isRead])
+  @@index([tenantId, senderId])
+  @@map("messages")
+}
+
+model SupportTicket {
+  id          Int               @id @default(autoincrement())
+  tenantId    Int
+  userId      Int
+  ticketNumber String           @unique
+  subject     String
+  description String            @db.Text
+  category    String            // e.g., "Technical", "Enrollment", "Certificate", "General"
+  priority    TicketPriority    @default(MEDIUM)
+  status      TicketStatus      @default(OPEN)
+  assignedTo  Int?
+  resolution  String?           @db.Text
+  resolvedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id])
+  user           User                @relation("TicketCreatedBy", fields: [userId], references: [id], onDelete: NoAction)
+  assignedToUser User?               @relation("TicketAssignedTo", fields: [assignedTo], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  comments       SupportTicketComment[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, userId])
+  @@map("support_tickets")
+}
+
+model SupportTicketComment {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  userId    Int
+  comment   String   @db.Text
+  isInternal Boolean @default(false) // Internal notes visible only to admins
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User          @relation(fields: [userId], references: [id], onDelete: NoAction)
+
+  @@index([ticketId])
+  @@map("support_ticket_comments")
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_RESPONSE
+  RESOLVED
+  CLOSED
 }
