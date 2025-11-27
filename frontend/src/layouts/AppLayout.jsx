@@ -84,6 +84,7 @@ const AppLayout = ({ children }) => {
     if (path.includes('/trainer')) return 'Trainer Dashboard';
     if (path.includes('/recruiter')) return 'Recruiter Dashboard';
     if (path.includes('/broker')) return 'Broker Dashboard';
+    if (path.includes('/broker')) return 'Broker Dashboard';
     if (path.includes('/employer')) return 'Employer Dashboard';
     return 'Dashboard';
   };
@@ -180,10 +181,10 @@ const AppLayout = ({ children }) => {
         { label: 'Reports', path: '/recruiter/reports', icon: ChartBarIcon },
       ],
       broker: [
-        { label: 'Clients', path: '/broker/clients', icon: UserGroupIcon },
-        { label: 'Services', path: '/broker/services', icon: BriefcaseIcon },
-        { label: 'Transactions', path: '/broker/transactions', icon: CurrencyDollarIcon },
-        { label: 'Reports', path: '/broker/reports', icon: ChartBarIcon },
+        { label: 'Referrals', path: '/broker/referrals', icon: UserGroupIcon },
+        { label: 'Placements', path: '/broker/placements', icon: BriefcaseIcon },
+        { label: 'Commissions', path: '/broker/commissions', icon: CurrencyDollarIcon },
+        { label: 'Payments', path: '/broker/payments', icon: ChartBarIcon },
       ],
       employer: [
         { label: 'Job Postings', path: '/employer/jobs', icon: BriefcaseIcon },

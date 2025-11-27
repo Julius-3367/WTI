@@ -57,6 +57,10 @@ import RecruiterPlacements from './pages/recruiter/Placements';
 import RecruiterCompanies from './pages/recruiter/Companies';
 import RecruiterReports from './pages/recruiter/Reports';
 import BrokerDashboard from './pages/broker/Dashboard';
+import BrokerReferrals from './pages/broker/Referrals';
+import BrokerPlacements from './pages/broker/Placements';
+import BrokerCommissions from './pages/broker/Commissions';
+import BrokerPayments from './pages/broker/Payments';
 
 // Lazy-loaded trainer components
 const MyCourses = React.lazy(() => import('./pages/trainer/MyCourses'));
@@ -417,7 +421,14 @@ const App = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.BROKER]}>
               <AppLayout>
-                <BrokerDashboard />
+                <Routes>
+                  <Route index element={<BrokerDashboard />} />
+                  <Route path="dashboard" element={<BrokerDashboard />} />
+                  <Route path="referrals" element={<BrokerReferrals />} />
+                  <Route path="placements" element={<BrokerPlacements />} />
+                  <Route path="commissions" element={<BrokerCommissions />} />
+                  <Route path="payments" element={<BrokerPayments />} />
+                </Routes>
               </AppLayout>
             </ProtectedRoute>
           }

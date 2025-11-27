@@ -446,6 +446,25 @@ export const adminAPI = {
   getReports: () => api.get('/admin/reports'),
 };
 
+// Export broker API methods
+export const brokerAPI = {
+  // Dashboard
+  getDashboard: () => api.get('/broker/dashboard'),
+  
+  // Referrals (Candidates)
+  getReferrals: (params) => api.get('/broker/referrals', { params }),
+  createReferral: (data) => api.post('/broker/referrals', data),
+  
+  // Placements
+  getPlacements: (params) => api.get('/broker/placements', { params }),
+  
+  // Commissions
+  getCommissions: () => api.get('/broker/commissions'),
+  
+  // Payments
+  getPayments: (params) => api.get('/broker/payments', { params }),
+};
+
 // Export axios instance for custom requests
 export { api };
 

@@ -17,6 +17,7 @@ const candidateRoutes = require('./routes/candidateRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const trainerRoutes = require('./routes/trainerRoutes');
 const recruiterRoutes = require('./routes/recruiterRoutes');
+const brokerRoutes = require('./routes/brokerRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const supportTicketRoutes = require('./routes/supportTicketRoutes');
 
@@ -240,6 +241,7 @@ app.use('/api/candidate', candidateRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/trainer', trainerRoutes);
 app.use('/api/recruiter', recruiterRoutes);
+app.use('/api/broker', brokerRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/support-tickets', supportTicketRoutes);
 

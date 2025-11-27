@@ -300,6 +300,106 @@ async function main() {
     }
   }
 
+  // Create sample broker
+  const brokerRole = await prisma.role.findFirst({
+    where: { name: 'Broker' }
+  });
+
+  let brokerUserId;
+  let brokerProfileId;
+  if (brokerRole) {
+    const existingBrokerUser = await prisma.user.findUnique({
+      where: { email: 'broker@labourmobility.com' }
+    });
+
+    if (!existingBrokerUser) {
+      const hashedPassword = await bcrypt.hash('broker123', 12);
+      
+      const brokerUser = await prisma.user.create({
+        data: {
+          email: 'broker@labourmobility.com',
+          password: hashedPassword,
+          firstName: 'Maria',
+          lastName: 'Broker',
+          phone: '+254700000004',
+          roleId: brokerRole.id,
+          tenantId: 1,
+          status: 'ACTIVE'
+        }
+      });
+      brokerUserId = brokerUser.id;
+
+      // Create UserTenant membership
+      await prisma.userTenant.create({
+        data: {
+          userId: brokerUserId,
+          tenantId: 1,
+          roleId: brokerRole.id
+        }
+      });
+
+      // Create broker profile
+      const brokerProfile = await prisma.broker.create({
+        data: {
+          tenantId: 1,
+          name: 'Maria Broker & Associates',
+          brokerCode: 'BRK001',
+          contactDetails: {
+            email: 'broker@labourmobility.com',
+            phone: '+254700000004',
+            address: 'Nairobi, Kenya'
+          },
+          referrerType: 'Individual',
+          dateJoined: new Date(),
+          commissionType: 'Percentage',
+          commissionAmount: 5.0,
+          paymentTerms: 'Net 30',
+          createdBy: brokerUserId
+        }
+      });
+      brokerProfileId = brokerProfile.id;
+      
+      console.log('✅ Created broker user: broker@labourmobility.com');
+      console.log('✅ Created broker profile: Maria Broker & Associates');
+    } else {
+      brokerUserId = existingBrokerUser.id;
+      
+      // Check if broker profile exists
+      const existingBrokerProfile = await prisma.broker.findFirst({
+        where: { createdBy: brokerUserId }
+      });
+
+      if (!existingBrokerProfile) {
+        const brokerProfile = await prisma.broker.create({
+          data: {
+            tenantId: 1,
+            name: 'Maria Broker & Associates',
+            brokerCode: 'BRK001',
+            contactDetails: {
+              email: 'broker@labourmobility.com',
+              phone: '+254700000004',
+              address: 'Nairobi, Kenya'
+            },
+            referrerType: 'Individual',
+            dateJoined: new Date(),
+            commissionType: 'Percentage',
+            commissionAmount: 5.0,
+            paymentTerms: 'Net 30',
+            createdBy: brokerUserId
+          }
+        });
+        brokerProfileId = brokerProfile.id;
+        console.log('✅ Created broker profile for existing user');
+      } else {
+        brokerProfileId = existingBrokerProfile.id;
+      }
+      
+      console.log('⏭️  Broker user already exists');
+    }
+  } else {
+    console.warn('⚠️  Broker role not found; broker seed user was not created');
+  }
+
   // Create sample courses
   if (trainerId) {
     console.log('📚 Creating sample courses...');
