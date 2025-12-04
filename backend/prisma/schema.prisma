@@ -60,6 +60,7 @@ enum AssessmentResult {
 
 enum VettingStatus {
   PENDING
+  PENDING_DOCUMENTS
   IN_PROGRESS
   CLEARED
   REJECTED
@@ -665,10 +666,14 @@ model Assessment {
   tenantId        Int
   courseId        Int
   enrollmentId    Int
-  assessmentType  String
+  assessmentTitle String?           @db.VarChar(255)
+  assessmentType  String            @db.VarChar(100)
+  maxScore        Float?
   score           Float?
+  percentage      Float?
   resultCategory  AssessmentResult?
-  trainerComments String?
+  trainerComments String?           @db.Text
+  feedback        String?           @db.Text
   date            DateTime?
   createdBy       Int?
   updatedBy       Int?
@@ -682,6 +687,7 @@ model Assessment {
   updatedByUser User?      @relation("AssessmentUpdatedBy", fields: [updatedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([tenantId, courseId])
+  @@index([enrollmentId])
   @@map("assessments")
 }
 

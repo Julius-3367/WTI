@@ -249,9 +249,21 @@ const getCourseDetails = async (req, res) => {
           include: {
             candidate: {
               select: {
+                id: true,
                 fullName: true,
+                user: {
+                  select: {
+                    email: true,
+                  },
+                },
               },
             },
+          },
+        },
+        createdByUser: {
+          select: {
+            firstName: true,
+            lastName: true,
           },
         },
       },
@@ -313,7 +325,11 @@ const getCourseStudents = async (req, res) => {
       where: { courseId: parseInt(courseId) },
       include: {
         candidate: {
-          include: {
+          select: {
+            id: true,
+            fullName: true,
+            dateOfBirth: true,
+            nationalId: true,
             user: {
               select: {
                 email: true,
@@ -321,6 +337,11 @@ const getCourseStudents = async (req, res) => {
               },
             },
           },
+        },
+      },
+      orderBy: {
+        candidate: {
+          fullName: 'asc',
         },
       },
     });
@@ -443,7 +464,7 @@ const recordAttendance = async (req, res) => {
  */
 const createAssessment = async (req, res) => {
   try {
-    const { enrollmentId, assessmentType, score, resultCategory, trainerComments, date } = req.body;
+    const { enrollmentId, assessmentTitle, assessmentType, maxScore, score, resultCategory, trainerComments, feedback, date } = req.body;
     const trainerId = req.user.id;
 
     const enrollment = await prisma.enrollment.findUnique({
@@ -466,15 +487,29 @@ const createAssessment = async (req, res) => {
       });
     }
 
+    // Calculate percentage and result category
+    const maxScoreValue = maxScore ? parseFloat(maxScore) : 100;
+    const scoreValue = score ? parseFloat(score) : null;
+    const percentageValue = scoreValue !== null ? (scoreValue / maxScoreValue) * 100 : null;
+    
+    let autoResultCategory = resultCategory;
+    if (!autoResultCategory && percentageValue !== null) {
+      autoResultCategory = percentageValue >= 50 ? 'PASS' : 'FAIL';
+    }
+
     const assessment = await prisma.assessment.create({
       data: {
         tenantId: enrollment.tenantId,
         courseId: enrollment.courseId,
         enrollmentId: parseInt(enrollmentId),
+        assessmentTitle: assessmentTitle || assessmentType,
         assessmentType,
-        score: score ? parseFloat(score) : null,
-        resultCategory: resultCategory || null,
+        maxScore: maxScoreValue,
+        score: scoreValue,
+        percentage: percentageValue,
+        resultCategory: autoResultCategory,
         trainerComments,
+        feedback,
         date: date ? new Date(date) : new Date(),
         createdBy: trainerId,
       },
@@ -501,7 +536,7 @@ const createAssessment = async (req, res) => {
 const updateAssessment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { score, resultCategory, trainerComments } = req.body;
+    const { assessmentTitle, maxScore, score, resultCategory, trainerComments, feedback } = req.body;
     const trainerId = req.user.id;
 
     const assessment = await prisma.assessment.findUnique({
@@ -526,14 +561,30 @@ const updateAssessment = async (req, res) => {
       });
     }
 
+    // Calculate percentage if score is being updated
+    const updateData = {
+      updatedBy: trainerId,
+    };
+
+    if (assessmentTitle !== undefined) updateData.assessmentTitle = assessmentTitle;
+    if (maxScore !== undefined) updateData.maxScore = parseFloat(maxScore);
+    if (score !== undefined) {
+      updateData.score = parseFloat(score);
+      const maxScoreVal = maxScore !== undefined ? parseFloat(maxScore) : (assessment.maxScore || 100);
+      updateData.percentage = (parseFloat(score) / maxScoreVal) * 100;
+      
+      // Auto-calculate result if not provided
+      if (!resultCategory) {
+        updateData.resultCategory = updateData.percentage >= 50 ? 'PASS' : 'FAIL';
+      }
+    }
+    if (resultCategory) updateData.resultCategory = resultCategory;
+    if (trainerComments !== undefined) updateData.trainerComments = trainerComments;
+    if (feedback !== undefined) updateData.feedback = feedback;
+
     const updated = await prisma.assessment.update({
       where: { id: parseInt(id) },
-      data: {
-        ...(score !== undefined && { score: parseFloat(score) }),
-        ...(resultCategory && { resultCategory }),
-        ...(trainerComments && { trainerComments }),
-        updatedBy: trainerId,
-      },
+      data: updateData,
     });
 
     res.json({
