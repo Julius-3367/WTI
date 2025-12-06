@@ -18,6 +18,12 @@ export const trainerService = {
   // Assessments
   createAssessment: (data) => axios.post(`${API_URL}/assessments`, data),
   updateAssessment: (id, data) => axios.put(`${API_URL}/assessments/${id}`, data),
+
+  // Cohorts
+  getMyCohorts: () => axios.get(`${API_URL}/cohorts`),
+  getCohortSessions: (cohortId) => axios.get(`${API_URL}/cohorts/${cohortId}/sessions`),
+  updateCohortSession: (cohortId, sessionId, data) => 
+    axios.put(`${API_URL}/cohorts/${cohortId}/sessions/${sessionId}`, data),
 };
 
 export default trainerService;

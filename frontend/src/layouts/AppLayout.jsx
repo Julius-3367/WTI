@@ -153,6 +153,7 @@ const AppLayout = ({ children }) => {
         { label: 'Users', path: '/admin/users', icon: UserGroupIcon },
         { label: 'Candidates', path: '/admin/candidates', icon: UserGroupIcon },
         { label: 'Courses', path: '/admin/courses', icon: AcademicCapIcon },
+        { label: 'Cohorts', path: '/admin/cohorts', icon: UserGroupIcon },
         { label: 'Enrollments', path: '/admin/enrollments', icon: ClipboardDocumentListIcon },
         { label: 'Vetting', path: '/admin/vetting', icon: ShieldCheckIcon },
         { label: 'Documents', path: '/admin/certificates', icon: DocumentTextIcon },
@@ -170,6 +171,7 @@ const AppLayout = ({ children }) => {
       trainer: [
         { label: 'Attendance', path: '/trainer/attendance', icon: CalendarIcon },
         { label: 'My Courses', path: '/trainer/my-courses', icon: AcademicCapIcon },
+        { label: 'My Cohorts', path: '/trainer/cohorts', icon: UserGroupIcon },
         { label: 'Students', path: '/trainer/students', icon: UserGroupIcon },
         { label: 'Assessments', path: '/trainer/assessments', icon: DocumentTextIcon },
         { label: 'Schedule', path: '/trainer/schedule', icon: CalendarIcon },

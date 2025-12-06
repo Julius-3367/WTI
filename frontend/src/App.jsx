@@ -47,10 +47,14 @@ import CandidateProfile from './pages/candidate/ProfileSettings';
 import CandidateCourseDetails from './pages/candidate/CourseDetails';
 import PlacementPage from './pages/candidate/PlacementPage';
 import AdminCourseDetails from './pages/admin/CourseDetails';
+import AdminCohorts from './pages/admin/Cohorts';
+import AdminCohortDetails from './pages/admin/CohortDetails';
+import AdminCohortForm from './pages/admin/CohortForm';
 import CandidateCalendar from './pages/candidate/Calendar';
 import CandidateNotifications from './pages/candidate/Notifications';
 import TrainerDashboard from './pages/trainer/Dashboard';
 import TrainerAttendance from './pages/trainer/Attendance';
+import TrainerMyCohorts from './pages/trainer/MyCohorts';
 import RecruiterDashboard from './pages/recruiter/Dashboard';
 import RecruiterCandidates from './pages/recruiter/Candidates';
 import RecruiterPlacements from './pages/recruiter/Placements';
@@ -324,6 +328,10 @@ const App = () => {
                   <Route path="courses/:courseId" element={<AdminCourseDetails />} />
                   <Route path="courses/new" element={<AdminCreateCourse />} />
                   <Route path="courses/:id/edit" element={<AdminCreateCourse />} />
+                  <Route path="cohorts" element={<AdminCohorts />} />
+                  <Route path="cohorts/create" element={<AdminCohortForm />} />
+                  <Route path="cohorts/:id" element={<AdminCohortDetails />} />
+                  <Route path="cohorts/:id/edit" element={<AdminCohortForm />} />
                   <Route path="enrollments" element={<AdminEnrollments />} />
                   <Route path="candidates" element={<AdminCandidates />} />
                   <Route path="candidates/:id" element={<AdminCandidateDetails />} />
@@ -384,6 +392,7 @@ const App = () => {
                     <Route path="dashboard" element={<TrainerDashboard />} />
                     <Route path="attendance" element={<TrainerAttendance />} />
                     <Route path="my-courses" element={<MyCourses />} />
+                    <Route path="cohorts" element={<TrainerMyCohorts />} />
                     <Route path="students" element={<TrainerStudents />} />
                     <Route path="assessments" element={<TrainerAssessments />} />
                     <Route path="schedule" element={<TrainerSchedule />} />
