@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -48,6 +48,7 @@ import { format } from 'date-fns';
 
 const Cohorts = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [cohorts, setCohorts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,6 +61,15 @@ const Cohorts = () => {
   const [courseFilter, setCourseFilter] = useState('');
   const [deleteDialog, setDeleteDialog] = useState({ open: false, cohort: null });
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Show success message from navigation state
+  useEffect(() => {
+    if (location.state?.success) {
+      setSuccess(location.state.success);
+      // Clear the state so message doesn't show on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   useEffect(() => {
     fetchCohorts();
@@ -110,7 +120,7 @@ const Cohorts = () => {
     try {
       setActionLoading(true);
       await cohortService.publishCohort(cohort.id);
-      setSuccess(`Cohort "${cohort.name}" published successfully`);
+      setSuccess(`Cohort "${cohort.cohortName || cohort.name}" published successfully`);
       fetchCohorts();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to publish cohort');
@@ -123,7 +133,7 @@ const Cohorts = () => {
     try {
       setActionLoading(true);
       await cohortService.openEnrollment(cohort.id);
-      setSuccess(`Enrollment opened for "${cohort.name}"`);
+      setSuccess(`Enrollment opened for "${cohort.cohortName || cohort.name}"`);
       fetchCohorts();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to open enrollment');
@@ -136,7 +146,7 @@ const Cohorts = () => {
     try {
       setActionLoading(true);
       await cohortService.closeEnrollment(cohort.id);
-      setSuccess(`Enrollment closed for "${cohort.name}"`);
+      setSuccess(`Enrollment closed for "${cohort.cohortName || cohort.name}"`);
       fetchCohorts();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to close enrollment');
@@ -149,7 +159,7 @@ const Cohorts = () => {
     try {
       setActionLoading(true);
       await cohortService.archiveCohort(cohort.id);
-      setSuccess(`Cohort "${cohort.name}" archived successfully`);
+      setSuccess(`Cohort "${cohort.cohortName || cohort.name}" archived successfully`);
       fetchCohorts();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to archive cohort');
@@ -162,7 +172,7 @@ const Cohorts = () => {
     try {
       setActionLoading(true);
       await cohortService.deleteCohort(deleteDialog.cohort.id);
-      setSuccess(`Cohort "${deleteDialog.cohort.name}" deleted successfully`);
+      setSuccess(`Cohort "${deleteDialog.cohort.cohortName || deleteDialog.cohort.name}" deleted successfully`);
       setDeleteDialog({ open: false, cohort: null });
       fetchCohorts();
     } catch (err) {
@@ -370,7 +380,7 @@ const Cohorts = () => {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{cohort.name}</Typography>
+                    <Typography variant="body2">{cohort.cohortName || cohort.name}</Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">

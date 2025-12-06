@@ -12,8 +12,8 @@ export const cohortService = {
 
   // Cohort Status Management
   publishCohort: (id) => axios.post(`${API_URL}/${id}/publish`),
-  openEnrollment: (id) => axios.post(`${API_URL}/${id}/open-enrollment`),
-  closeEnrollment: (id) => axios.post(`${API_URL}/${id}/close-enrollment`),
+  openEnrollment: (id) => axios.post(`${API_URL}/${id}/enrollment/open`),
+  closeEnrollment: (id) => axios.post(`${API_URL}/${id}/enrollment/close`),
   archiveCohort: (id) => axios.post(`${API_URL}/${id}/archive`),
 
   // Enrollment Management
@@ -24,8 +24,8 @@ export const cohortService = {
 
   // Progress & Metrics
   getCohortProgress: (id) => axios.get(`${API_URL}/${id}/progress`),
-  updateCohortMetrics: (id) => axios.post(`${API_URL}/${id}/update-metrics`),
-  generateProgressSummary: (id) => axios.post(`${API_URL}/${id}/generate-summary`),
+  updateCohortMetrics: (id) => axios.post(`${API_URL}/${id}/metrics/update`),
+  generateProgressSummary: (id) => axios.post(`${API_URL}/${id}/summary`),
 
   // Session Management
   createSession: (id, data) => axios.post(`${API_URL}/${id}/sessions`, data),

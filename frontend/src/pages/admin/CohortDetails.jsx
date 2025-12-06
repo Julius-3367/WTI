@@ -189,7 +189,7 @@ const CohortDetails = () => {
         </IconButton>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h4" fontWeight="bold">
-            {cohort.name}
+            {cohort.cohortName || cohort.name}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {cohort.cohortCode}

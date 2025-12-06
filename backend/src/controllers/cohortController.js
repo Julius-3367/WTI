@@ -197,7 +197,7 @@ const getCohortById = async (req, res) => {
               select: {
                 id: true,
                 fullName: true,
-                nationalId: true,
+                nationalIdPassport: true,
                 user: {
                   select: {
                     email: true,

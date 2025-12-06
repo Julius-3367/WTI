@@ -52,28 +52,38 @@ const CohortForm = () => {
 
   const fetchDropdownData = async () => {
     try {
-      const [coursesRes, usersRes] = await Promise.all([
-        adminService.getAllCourses({ limit: 1000 }),
-        adminService.getAllUsers({ role: 'TRAINER', limit: 1000 }),
-      ]);
+      console.log('Fetching courses and trainers...');
       
-      console.log('Courses response:', coursesRes.data);
-      console.log('Users response:', usersRes.data);
+      const coursesRes = await adminService.getAllCourses({ limit: 1000 });
+      console.log('Courses API response:', coursesRes);
       
-      const coursesList = coursesRes.data?.courses || [];
-      const usersList = usersRes.data?.users || [];
+      const usersRes = await adminService.getAllUsers({ role: 'Trainer', limit: 1000 });
+      console.log('Users API response:', usersRes);
+      
+      // API returns: { data: { success, data: { courses: [], users: [] }, pagination } }
+      const coursesList = coursesRes?.data?.data?.courses || [];
+      const usersList = usersRes?.data?.data?.users || [];
+      
+      console.log('Extracted courses:', coursesList);
+      console.log('Extracted trainers:', usersList);
       
       setCourses(coursesList);
       setTrainers(usersList);
       
+      const errors = [];
       if (coursesList.length === 0) {
-        setError('No courses found. Please create a course first.');
+        errors.push('No courses found. Please create a course first.');
       }
       if (usersList.length === 0) {
-        setError('No trainers found. Please create a trainer user first.');
+        errors.push('No trainers found. Please create a trainer user first.');
+      }
+      
+      if (errors.length > 0) {
+        setError(errors.join(' '));
       }
     } catch (err) {
       console.error('Error fetching dropdown data:', err);
+      console.error('Error details:', err.response);
       setError(`Failed to load form data: ${err.response?.data?.message || err.message}`);
     }
   };
@@ -87,7 +97,7 @@ const CohortForm = () => {
       // Format dates for input fields
       setFormData({
         cohortCode: cohort.cohortCode || '',
-        name: cohort.name || '',
+        name: cohort.cohortName || cohort.name || '',
         courseId: cohort.courseId || '',
         leadTrainerId: cohort.leadTrainerId || '',
         startDate: cohort.startDate ? cohort.startDate.split('T')[0] : '',
@@ -177,19 +187,30 @@ const CohortForm = () => {
       setError(null);
 
       const submitData = {
-        ...formData,
+        cohortCode: formData.cohortCode,
+        cohortName: formData.name, // Backend expects 'cohortName'
+        description: formData.description,
         courseId: parseInt(formData.courseId),
         leadTrainerId: parseInt(formData.leadTrainerId),
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        enrollmentDeadline: formData.enrollmentDeadline,
         maxCapacity: parseInt(formData.maxCapacity),
       };
 
       if (isEditMode) {
         await cohortService.updateCohort(id, submitData);
       } else {
-        await cohortService.createCohort(submitData);
+        const response = await cohortService.createCohort(submitData);
+        console.log('Cohort created:', response.data);
       }
 
-      navigate('/admin/cohorts');
+      // Navigate to cohorts list with success indicator
+      navigate('/admin/cohorts', { 
+        state: { 
+          success: `Cohort "${formData.name}" ${isEditMode ? 'updated' : 'created'} successfully` 
+        } 
+      });
     } catch (err) {
       console.error('Error saving cohort:', err);
       setError(err.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} cohort`);

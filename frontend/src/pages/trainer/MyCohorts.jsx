@@ -114,7 +114,7 @@ const MyCohorts = () => {
                     {/* Cohort Header */}
                     <Box>
                       <Typography variant="h6" fontWeight="bold" gutterBottom>
-                        {cohort.name}
+                        {cohort.cohortName || cohort.name}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         {cohort.cohortCode}
