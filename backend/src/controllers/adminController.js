@@ -29,6 +29,9 @@ const getDashboard = async (req, res) => {
       activeEnrollments,
       completedEnrollments,
       totalPlacements,
+      totalCohorts,
+      activeCohorts,
+      pendingCohortEnrollments,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.candidate.count(),
@@ -38,6 +41,9 @@ const getDashboard = async (req, res) => {
       prisma.enrollment.count({ where: { enrollmentStatus: 'ENROLLED' } }),
       prisma.enrollment.count({ where: { enrollmentStatus: 'COMPLETED' } }),
       prisma.placement.count(),
+      prisma.cohort.count(),
+      prisma.cohort.count({ where: { status: { in: ['ENROLLMENT_OPEN', 'IN_TRAINING'] } } }),
+      prisma.cohortEnrollment.count({ where: { status: 'APPLIED' } }),
     ]);
 
     // Get recent users
@@ -96,6 +102,63 @@ const getDashboard = async (req, res) => {
       },
     });
 
+    // Get recent cohorts
+    const recentCohorts = await prisma.cohort.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        course: {
+          select: {
+            title: true,
+            code: true,
+          },
+        },
+        leadTrainer: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: true,
+          },
+        },
+      },
+    });
+
+    // Get pending cohort enrollments for approval
+    const pendingEnrollments = await prisma.cohortEnrollment.findMany({
+      where: { status: 'APPLIED' },
+      take: 10,
+      orderBy: { applicationDate: 'desc' },
+      include: {
+        candidate: {
+          select: {
+            id: true,
+            fullName: true,
+            user: {
+              select: {
+                email: true,
+              },
+            },
+          },
+        },
+        cohort: {
+          select: {
+            id: true,
+            cohortName: true,
+            cohortCode: true,
+            course: {
+              select: {
+                title: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
     res.json({
       success: true,
       data: {
@@ -108,12 +171,17 @@ const getDashboard = async (req, res) => {
           activeEnrollments,
           completedEnrollments,
           totalPlacements,
+          totalCohorts,
+          activeCohorts,
+          pendingCohortEnrollments,
           enrollmentRate: totalCandidates > 0 ? ((activeEnrollments / totalCandidates) * 100).toFixed(1) : 0,
           completionRate: totalEnrollments > 0 ? ((completedEnrollments / totalEnrollments) * 100).toFixed(1) : 0,
         },
         recentUsers,
         recentEnrollments,
         recentActivity,
+        recentCohorts,
+        pendingEnrollments,
       },
     });
   } catch (error) {

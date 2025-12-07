@@ -30,6 +30,7 @@ import {
   Select,
   Avatar,
   LinearProgress,
+  Divider,
 } from '@mui/material';
 import {
   CheckCircle as ApproveIcon,
@@ -389,7 +390,13 @@ const Enrollments = () => {
                           </TableCell>
                           <TableCell align="right">
                             <Tooltip title="View Details">
-                              <IconButton size="small">
+                              <IconButton 
+                                size="small"
+                                onClick={() => {
+                                  setSelectedEnrollment(enrollment);
+                                  setViewDialogOpen(true);
+                                }}
+                              >
                                 <ViewIcon />
                               </IconButton>
                             </Tooltip>
@@ -437,6 +444,114 @@ const Enrollments = () => {
           </>
         )}
       </Card>
+
+      {/* View Details Dialog */}
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Enrollment Details
+        </DialogTitle>
+        <DialogContent>
+          {selectedEnrollment && (
+            <Box mt={2}>
+              <Grid container spacing={3}>
+                {/* Candidate Information */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom color="primary">
+                    Candidate Information
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Full Name</Typography>
+                  <Typography variant="body1">{selectedEnrollment.candidate?.fullName || 'N/A'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Email</Typography>
+                  <Typography variant="body1">{selectedEnrollment.candidate?.email || 'N/A'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Phone</Typography>
+                  <Typography variant="body1">{selectedEnrollment.candidate?.phoneNumber || 'N/A'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">ID Number</Typography>
+                  <Typography variant="body1">{selectedEnrollment.candidate?.idNumber || 'N/A'}</Typography>
+                </Grid>
+
+                {/* Course Information */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 2 }}>
+                    Course Information
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="text.secondary">Course Title</Typography>
+                  <Typography variant="body1">{selectedEnrollment.course?.title || 'N/A'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Course Code</Typography>
+                  <Typography variant="body1">{selectedEnrollment.course?.courseCode || 'N/A'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Duration</Typography>
+                  <Typography variant="body1">{selectedEnrollment.course?.durationDays ? `${selectedEnrollment.course.durationDays} days` : 'N/A'}</Typography>
+                </Grid>
+
+                {/* Enrollment Details */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 2 }}>
+                    Enrollment Details
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Enrollment Date</Typography>
+                  <Typography variant="body1">
+                    {selectedEnrollment.enrollmentDate 
+                      ? new Date(selectedEnrollment.enrollmentDate).toLocaleDateString() 
+                      : 'N/A'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Status</Typography>
+                  <Chip
+                    label={selectedEnrollment.enrollmentStatus}
+                    color={
+                      selectedEnrollment.enrollmentStatus === 'ENROLLED' ? 'success' :
+                      selectedEnrollment.enrollmentStatus === 'COMPLETED' ? 'primary' :
+                      selectedEnrollment.enrollmentStatus === 'APPLIED' ? 'warning' : 'default'
+                    }
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Payment Status</Typography>
+                  <Chip
+                    label={selectedEnrollment.paymentStatus || 'PENDING'}
+                    color={selectedEnrollment.paymentStatus === 'PAID' ? 'success' : 'warning'}
+                    size="small"
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Certificate Issued</Typography>
+                  <Typography variant="body1">{selectedEnrollment.certificateIssued ? 'Yes' : 'No'}</Typography>
+                </Grid>
+                {selectedEnrollment.remarks && (
+                  <Grid item xs={12}>
+                    <Typography variant="body2" color="text.secondary">Remarks</Typography>
+                    <Typography variant="body1">{selectedEnrollment.remarks}</Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Action Dialog */}
       <Dialog open={actionDialogOpen} onClose={() => setActionDialogOpen(false)} maxWidth="sm" fullWidth>

@@ -87,8 +87,11 @@ const Cohorts = () => {
         courseId: courseFilter || undefined,
       };
       const response = await cohortService.getCohorts(params);
-      setCohorts(response.data.cohorts || []);
-      setTotalCohorts(response.data.total || 0);
+      
+      // API returns data nested in response.data.data
+      const cohortsData = response.data?.data || response.data;
+      setCohorts(cohortsData.cohorts || []);
+      setTotalCohorts(cohortsData.total || 0);
     } catch (err) {
       console.error('Error fetching cohorts:', err);
       setError(err.response?.data?.message || 'Failed to fetch cohorts');
@@ -384,7 +387,7 @@ const Cohorts = () => {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {cohort.course?.name || 'N/A'}
+                      {cohort.course?.title || cohort.course?.name || 'N/A'}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -398,7 +401,7 @@ const Cohorts = () => {
                   <TableCell>{formatDate(cohort.endDate)}</TableCell>
                   <TableCell align="center">
                     <Chip
-                      label={cohort.enrolledCount || 0}
+                      label={cohort._count?.enrollments || cohort.enrolledCount || 0}
                       size="small"
                       variant="outlined"
                     />

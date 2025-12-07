@@ -96,9 +96,24 @@ const TrainerDashboard = () => {
   const courses = useMemo(() => (dashboardData?.courses || []).slice(0, 5), [dashboardData]);
   const enrollments = dashboardData?.recentEnrollments || [];
   const assessments = dashboardData?.upcomingAssessments || [];
+  const cohorts = dashboardData?.cohorts || [];
+  const cohortEnrollments = dashboardData?.cohortEnrollments || [];
+  const upcomingSessions = dashboardData?.upcomingSessions || [];
 
   const statCards = useMemo(
     () => [
+      {
+        label: 'My Cohorts',
+        value: stats.totalCohorts ?? 0,
+        helper: `${stats.activeCohorts || 0} active`,
+        icon: <Group fontSize="small" />,
+      },
+      {
+        label: 'Cohort Students',
+        value: stats.totalCohortStudents ?? 0,
+        helper: `${stats.pendingApprovals || 0} pending approval`,
+        icon: <Group fontSize="small" />,
+      },
       {
         label: 'Active Courses',
         value: stats.totalCourses ?? 0,
@@ -108,7 +123,7 @@ const TrainerDashboard = () => {
       {
         label: 'Total Students',
         value: stats.totalStudents ?? 0,
-        helper: 'Unique enrollments',
+        helper: 'All enrollments',
         icon: <Group fontSize="small" />,
       },
       {
@@ -122,12 +137,6 @@ const TrainerDashboard = () => {
         value: stats.pendingAssessments ?? 0,
         helper: 'Awaiting grading',
         icon: <PendingActions fontSize="small" />,
-      },
-      {
-        label: 'Attendance Today',
-        value: stats.todayAttendance ?? 0,
-        helper: 'Sessions recorded',
-        icon: <TaskAlt fontSize="small" />,
       },
     ],
     [stats]
@@ -404,6 +413,119 @@ const TrainerDashboard = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* My Cohorts Section */}
+        {cohorts.length > 0 && (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6">My Cohorts</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Cohorts you are leading
+                    </Typography>
+                  </Box>
+                  <Button size="small" onClick={() => navigate('/trainer/cohorts')}>
+                    View all
+                  </Button>
+                </Stack>
+
+                <Grid container spacing={2}>
+                  {cohorts.slice(0, 4).map((cohort) => (
+                    <Grid item xs={12} sm={6} md={3} key={cohort.id}>
+                      <Box
+                        sx={{
+                          p: 2,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            borderColor: 'primary.main',
+                            boxShadow: 2,
+                          }
+                        }}
+                      >
+                        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                          {cohort.cohortName}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          {cohort.course.title}
+                        </Typography>
+                        <Chip
+                          label={cohort.status}
+                          size="small"
+                          color={cohort.status === 'IN_TRAINING' ? 'success' : cohort.status === 'ENROLLMENT_OPEN' ? 'primary' : 'default'}
+                          sx={{ mt: 1 }}
+                        />
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Students: {cohort.studentsCount}/{cohort.maxCapacity}
+                          </Typography>
+                          <br />
+                          <Typography variant="caption" color="text.secondary">
+                            Sessions: {cohort.sessionsCount}
+                          </Typography>
+                        </Box>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          fullWidth
+                          sx={{ mt: 2 }}
+                          onClick={() => navigate(`/trainer/cohorts/${cohort.id}`)}
+                        >
+                          Manage
+                        </Button>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Upcoming Sessions */}
+        {upcomingSessions.length > 0 && (
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Upcoming Sessions
+                </Typography>
+                <List>
+                  {upcomingSessions.map((session) => (
+                    <ListItem
+                      key={session.id}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        mb: 1,
+                      }}
+                    >
+                      <ListItemText
+                        primary={`${session.cohort.course.title} - ${session.topic || 'Session'}`}
+                        secondary={
+                          <>
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              {session.cohort.cohortName} • {formatDateTime(session.sessionDate)}
+                            </Typography>
+                            <br />
+                            <Typography component="span" variant="caption" color="text.secondary">
+                              {session.location || 'Location TBD'}
+                            </Typography>
+                          </>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
     </Box>
   );

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        h2 {
+            color: #333;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        .cohort-item, .enrollment-item {
+            background: #fff;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .approval-buttons {
+            margin-top: 10px;
+        }
+        .approval-buttons button {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin Dashboard Test</h1>
+    
+    <div class="section">
+        <h2>1. Login</h2>
+        <input type="email" id="email" placeholder="Email" value="admin@umsl.edu">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="login()">Login</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Dashboard Data</h2>
+        <button onclick="getDashboard()">Get Dashboard Data</button>
+        <div id="dashboardResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. Cohort Statistics</h2>
+        <div id="cohortStats"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. Recent Cohorts</h2>
+        <div id="recentCohorts"></div>
+    </div>
+
+    <div class="section">
+        <h2>5. Pending Enrollments</h2>
+        <div id="pendingEnrollments"></div>
+    </div>
+
+    <script>
+        let token = '';
+        const API_BASE = 'http://localhost:5000/api';
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.token) {
+                    token = data.token;
+                    resultDiv.innerHTML = '<p class="success">Login successful! Token received.</p>';
+                } else {
+                    resultDiv.innerHTML = `<p class="error">Login failed: ${data.message || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function getDashboard() {
+            if (!token) {
+                alert('Please login first');
+                return;
+            }
+
+            const resultDiv = document.getElementById('dashboardResult');
+            const statsDiv = document.getElementById('cohortStats');
+            const cohortsDiv = document.getElementById('recentCohorts');
+            const enrollmentsDiv = document.getElementById('pendingEnrollments');
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/dashboard`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '<p class="success">Dashboard data loaded successfully!</p>';
+                    
+                    // Display cohort statistics
+                    if (data.data && data.data.stats) {
+                        const stats = data.data.stats;
+                        statsDiv.innerHTML = `
+                            <p><strong>Total Cohorts:</strong> ${stats.totalCohorts || 0}</p>
+                            <p><strong>Active Cohorts:</strong> ${stats.activeCohorts || 0}</p>
+                            <p><strong>Pending Enrollments:</strong> ${stats.pendingCohortEnrollments || 0}</p>
+                        `;
+                    }
+
+                    // Display recent cohorts
+                    if (data.data && data.data.recentCohorts) {
+                        cohortsDiv.innerHTML = '<h3>Cohorts:</h3>';
+                        data.data.recentCohorts.forEach(cohort => {
+                            cohortsDiv.innerHTML += `
+                                <div class="cohort-item">
+                                    <strong>${cohort.name}</strong><br>
+                                    Course: ${cohort.course?.name || 'N/A'}<br>
+                                    Trainer: ${cohort.trainer?.user?.firstName || 'N/A'} ${cohort.trainer?.user?.lastName || ''}<br>
+                                    Enrollments: ${cohort._count?.enrollments || 0}<br>
+                                    Status: ${cohort.status}
+                                </div>
+                            `;
+                        });
+                    }
+
+                    // Display pending enrollments
+                    if (data.data && data.data.pendingEnrollments) {
+                        enrollmentsDiv.innerHTML = '<h3>Pending Approvals:</h3>';
+                        data.data.pendingEnrollments.forEach(enrollment => {
+                            enrollmentsDiv.innerHTML += `
+                                <div class="enrollment-item">
+                                    <strong>${enrollment.candidate?.user?.firstName || 'N/A'} ${enrollment.candidate?.user?.lastName || ''}</strong><br>
+                                    Cohort: ${enrollment.cohort?.name || 'N/A'}<br>
+                                    Applied: ${new Date(enrollment.enrolledAt).toLocaleDateString()}<br>
+                                    Status: ${enrollment.status}
+                                    <div class="approval-buttons">
+                                        <button onclick="updateEnrollment(${enrollment.id}, 'APPROVED')">Approve</button>
+                                        <button onclick="updateEnrollment(${enrollment.id}, 'REJECTED')">Reject</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+
+                    // Show raw data
+                    resultDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">Failed to load dashboard: ${data.message || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function updateEnrollment(enrollmentId, status) {
+            if (!token) {
+                alert('Please login first');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/enrollments/${enrollmentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`Enrollment ${status.toLowerCase()} successfully!`);
+                    getDashboard(); // Refresh dashboard
+                } else {
+                    alert(`Failed to update enrollment: ${data.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

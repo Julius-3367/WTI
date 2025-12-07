@@ -97,8 +97,123 @@ const getDashboardData = async (req, res) => {
     console.log('📚 getDashboardData - Enrollments found:', enrollments.length);
     console.log('📚 getDashboardData - Enrollment IDs:', enrollments.map(e => ({ enrollmentId: e.id, courseTitle: e.course.title, candidateId: e.candidateId })));
 
+    // Get cohort enrollments
+    const cohortEnrollments = await prisma.cohortEnrollment.findMany({
+      where: { candidateId: candidate.id },
+      include: {
+        cohort: {
+          include: {
+            course: {
+              select: {
+                id: true,
+                title: true,
+                code: true,
+              },
+            },
+            leadTrainer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+            _count: {
+              select: {
+                sessions: true,
+                enrollments: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { applicationDate: 'desc' },
+    });
+
+    // Get available cohorts for enrollment (ENROLLMENT_OPEN status)
+    const availableCohorts = await prisma.cohort.findMany({
+      where: {
+        status: 'ENROLLMENT_OPEN',
+        startDate: {
+          gte: new Date(),
+        },
+        // Exclude cohorts already enrolled
+        NOT: {
+          enrollments: {
+            some: {
+              candidateId: candidate.id,
+            },
+          },
+        },
+      },
+      include: {
+        course: {
+          select: {
+            id: true,
+            title: true,
+            code: true,
+          },
+        },
+        leadTrainer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: true,
+          },
+        },
+      },
+      orderBy: { startDate: 'asc' },
+      take: 5,
+    });
+
     // Get upcoming events (assessments, interviews, etc.)
     const upcomingEvents = [];
+
+    // Add cohort sessions
+    const upcomingSessions = await prisma.cohortSession.findMany({
+      where: {
+        cohortId: {
+          in: cohortEnrollments.map(e => e.cohortId),
+        },
+        sessionDate: {
+          gte: new Date(),
+        },
+        status: {
+          in: ['SCHEDULED', 'IN_PROGRESS'],
+        },
+      },
+      include: {
+        cohort: {
+          select: {
+            cohortName: true,
+            course: {
+              select: {
+                title: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { sessionDate: 'asc' },
+      take: 5,
+    });
+
+    upcomingSessions.forEach(session => {
+      upcomingEvents.push({
+        id: `session-${session.id}`,
+        title: `${session.cohort.course.title} - ${session.topic || 'Session'}`,
+        date: session.sessionDate.toISOString().split('T')[0],
+        time: session.sessionDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        type: 'session',
+        location: session.location || 'Training Center',
+        cohortName: session.cohort.cohortName,
+      });
+    });
 
     // Add assessment dates
     const assessments = await prisma.assessment.findMany({
@@ -144,6 +259,9 @@ const getDashboardData = async (req, res) => {
     // Calculate stats
     const completedCourses = enrollments.filter(e => e.enrollmentStatus === 'COMPLETED').length;
     const inProgressCourses = enrollments.filter(e => e.enrollmentStatus === 'ENROLLED').length;
+    const completedCohorts = cohortEnrollments.filter(e => e.status === 'COMPLETED').length;
+    const activeCohorts = cohortEnrollments.filter(e => e.status === 'ENROLLED').length;
+    const pendingCohortApplications = cohortEnrollments.filter(e => e.status === 'APPLIED').length;
     const certificates = await prisma.certificate.count({
       where: { enrollmentId: { in: enrollments.map(e => e.id) } },
     });
@@ -190,10 +308,43 @@ const getDashboardData = async (req, res) => {
           status: enrollment.status === 'COMPLETED' ? 'Completed' :
             enrollment.progress > 80 ? 'Almost Complete' : 'In Progress',
         })),
+        myCohorts: cohortEnrollments.map(ce => ({
+          id: ce.id,
+          cohortId: ce.cohort.id,
+          cohortName: ce.cohort.cohortName,
+          cohortCode: ce.cohort.cohortCode,
+          course: ce.cohort.course,
+          status: ce.status,
+          applicationDate: ce.applicationDate,
+          approvalDate: ce.approvalDate,
+          startDate: ce.cohort.startDate,
+          endDate: ce.cohort.endDate,
+          leadTrainer: ce.cohort.leadTrainer,
+          sessionsCount: ce.cohort._count.sessions,
+          studentsCount: ce.cohort._count.enrollments,
+          progress: ce.progress || 0,
+        })),
+        availableCohorts: availableCohorts.map(cohort => ({
+          id: cohort.id,
+          cohortName: cohort.cohortName,
+          cohortCode: cohort.cohortCode,
+          course: cohort.course,
+          startDate: cohort.startDate,
+          endDate: cohort.endDate,
+          enrollmentDeadline: cohort.enrollmentDeadline,
+          leadTrainer: cohort.leadTrainer,
+          maxCapacity: cohort.maxCapacity,
+          currentEnrollment: cohort._count.enrollments,
+          spotsLeft: cohort.maxCapacity - cohort._count.enrollments,
+          description: cohort.description,
+        })),
         upcomingEvents,
         stats: {
           activeCourses: inProgressCourses,
           completedCourses,
+          activeCohorts,
+          completedCohorts,
+          pendingCohortApplications,
           certificates,
           applications: placements.length,
         },
@@ -2098,6 +2249,284 @@ const getPlacementData = async (req, res) => {
   }
 };
 
+/**
+ * Get available cohorts for enrollment
+ */
+const getAvailableCohorts = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const candidate = await prisma.candidate.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!candidate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Candidate profile not found',
+      });
+    }
+
+    const availableCohorts = await prisma.cohort.findMany({
+      where: {
+        status: 'ENROLLMENT_OPEN',
+        startDate: {
+          gte: new Date(),
+        },
+        // Exclude cohorts already enrolled
+        NOT: {
+          enrollments: {
+            some: {
+              candidateId: candidate.id,
+            },
+          },
+        },
+      },
+      include: {
+        course: {
+          select: {
+            id: true,
+            title: true,
+            code: true,
+            description: true,
+            durationDays: true,
+          },
+        },
+        leadTrainer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: true,
+            sessions: true,
+          },
+        },
+      },
+      orderBy: { startDate: 'asc' },
+    });
+
+    res.json({
+      success: true,
+      data: availableCohorts.map(cohort => ({
+        id: cohort.id,
+        cohortName: cohort.cohortName,
+        cohortCode: cohort.cohortCode,
+        course: cohort.course,
+        startDate: cohort.startDate,
+        endDate: cohort.endDate,
+        enrollmentDeadline: cohort.enrollmentDeadline,
+        leadTrainer: cohort.leadTrainer,
+        maxCapacity: cohort.maxCapacity,
+        currentEnrollment: cohort._count.enrollments,
+        spotsLeft: cohort.maxCapacity - cohort._count.enrollments,
+        description: cohort.description,
+        location: cohort.location,
+        scheduleInfo: cohort.scheduleInfo,
+        sessionsCount: cohort._count.sessions,
+      })),
+    });
+  } catch (error) {
+    console.error('Get available cohorts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch available cohorts',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * Apply for a cohort
+ */
+const applyForCohort = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { cohortId } = req.params;
+
+    const candidate = await prisma.candidate.findUnique({
+      where: { userId },
+      select: { id: true, fullName: true },
+    });
+
+    if (!candidate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Candidate profile not found',
+      });
+    }
+
+    // Check if cohort exists and is open for enrollment
+    const cohort = await prisma.cohort.findUnique({
+      where: { id: parseInt(cohortId) },
+      include: {
+        _count: {
+          select: {
+            enrollments: true,
+          },
+        },
+      },
+    });
+
+    if (!cohort) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cohort not found',
+      });
+    }
+
+    if (cohort.status !== 'ENROLLMENT_OPEN') {
+      return res.status(400).json({
+        success: false,
+        message: 'This cohort is not open for enrollment',
+      });
+    }
+
+    if (cohort._count.enrollments >= cohort.maxCapacity) {
+      return res.status(400).json({
+        success: false,
+        message: 'This cohort is at full capacity',
+      });
+    }
+
+    // Check if already enrolled or applied
+    const existingEnrollment = await prisma.cohortEnrollment.findFirst({
+      where: {
+        cohortId: parseInt(cohortId),
+        candidateId: candidate.id,
+      },
+    });
+
+    if (existingEnrollment) {
+      return res.status(400).json({
+        success: false,
+        message: `You have already ${existingEnrollment.status === 'APPLIED' ? 'applied to' : 'enrolled in'} this cohort`,
+      });
+    }
+
+    // Create enrollment application
+    const enrollment = await prisma.cohortEnrollment.create({
+      data: {
+        cohortId: parseInt(cohortId),
+        candidateId: candidate.id,
+        status: 'APPLIED',
+        applicationDate: new Date(),
+      },
+      include: {
+        cohort: {
+          select: {
+            cohortName: true,
+            cohortCode: true,
+            course: {
+              select: {
+                title: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Application submitted successfully. Awaiting admin approval.',
+      data: enrollment,
+    });
+  } catch (error) {
+    console.error('Apply for cohort error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to apply for cohort',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * Get candidate's cohorts
+ */
+const getMyCohorts = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const candidate = await prisma.candidate.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!candidate) {
+      return res.status(404).json({
+        success: false,
+        message: 'Candidate profile not found',
+      });
+    }
+
+    const cohortEnrollments = await prisma.cohortEnrollment.findMany({
+      where: { candidateId: candidate.id },
+      include: {
+        cohort: {
+          include: {
+            course: {
+              select: {
+                id: true,
+                title: true,
+                code: true,
+              },
+            },
+            leadTrainer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+            _count: {
+              select: {
+                sessions: true,
+                enrollments: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { applicationDate: 'desc' },
+    });
+
+    res.json({
+      success: true,
+      data: cohortEnrollments.map(ce => ({
+        id: ce.id,
+        cohortId: ce.cohort.id,
+        cohortName: ce.cohort.cohortName,
+        cohortCode: ce.cohort.cohortCode,
+        course: ce.cohort.course,
+        status: ce.status,
+        applicationDate: ce.applicationDate,
+        approvalDate: ce.approvalDate,
+        startDate: ce.cohort.startDate,
+        endDate: ce.cohort.endDate,
+        leadTrainer: ce.cohort.leadTrainer,
+        sessionsCount: ce.cohort._count.sessions,
+        studentsCount: ce.cohort._count.enrollments,
+        progress: ce.progress || 0,
+      })),
+    });
+  } catch (error) {
+    console.error('Get my cohorts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch cohorts',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};
+
 module.exports = {
   getDashboardData,
   getMyCourses,
@@ -2121,4 +2550,8 @@ module.exports = {
   getAssessmentResults,
   getCertificatesAndDocuments,
   getPlacementData,
+  // Cohort endpoints
+  getAvailableCohorts,
+  applyForCohort,
+  getMyCohorts,
 };

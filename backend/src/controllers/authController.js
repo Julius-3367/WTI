@@ -84,6 +84,19 @@ const register = async (req, res) => {
       }
     });
 
+    // Auto-create Candidate profile if role is Candidate
+    if (role.name === 'Candidate') {
+      await prisma.candidate.create({
+        data: {
+          userId: user.id,
+          fullName: `${firstName} ${lastName}`,
+          tenantId: 1, // Default tenant
+          status: 'APPLIED'
+        }
+      });
+      console.log('✅ Candidate profile created for:', email);
+    }
+
     // Check if auto-login is enabled
     const autoLoginEnabled = process.env.AUTH_AUTO_LOGIN_AFTER_REGISTER === 'true';
 
@@ -142,7 +155,10 @@ const register = async (req, res) => {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            role: role.name
+            role: {
+              id: role.id,
+              name: role.name
+            }
           },
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
@@ -154,11 +170,16 @@ const register = async (req, res) => {
         success: true,
         message: 'User registered successfully',
         data: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: role.name
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: {
+              id: role.id,
+              name: role.name
+            }
+          }
         }
       });
     }

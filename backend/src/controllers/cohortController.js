@@ -153,7 +153,13 @@ const getCohorts = async (req, res) => {
 
     res.json({
       success: true,
-      data: cohorts,
+      data: {
+        cohorts,
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit)),
+      },
       pagination: {
         total,
         page: parseInt(page),
@@ -387,6 +393,9 @@ const enrollStudent = async (req, res) => {
 
     const cohort = await prisma.cohort.findUnique({
       where: { id: parseInt(id) },
+      include: {
+        course: true,
+      },
     });
 
     if (!cohort) {
@@ -427,15 +436,55 @@ const enrollStudent = async (req, res) => {
       });
     }
 
+    // When enrolling directly with ENROLLED status, create main enrollment
+    let mainEnrollmentId = enrollmentId ? parseInt(enrollmentId) : null;
+    
+    if (status === 'ENROLLED' && !mainEnrollmentId) {
+      // Check if candidate already has an enrollment for this course
+      let courseEnrollment = await prisma.enrollment.findFirst({
+        where: {
+          courseId: cohort.courseId,
+          candidateId: parseInt(candidateId),
+        },
+      });
+
+      // If no enrollment exists, create one
+      if (!courseEnrollment) {
+        courseEnrollment = await prisma.enrollment.create({
+          data: {
+            tenantId: cohort.tenantId,
+            courseId: cohort.courseId,
+            candidateId: parseInt(candidateId),
+            enrollmentDate: new Date(),
+            enrollmentStatus: 'ENROLLED',
+            paymentStatus: 'PENDING',
+            createdBy: userId,
+          },
+        });
+      } else if (courseEnrollment.enrollmentStatus !== 'ENROLLED') {
+        // Update existing enrollment to ENROLLED status
+        courseEnrollment = await prisma.enrollment.update({
+          where: { id: courseEnrollment.id },
+          data: {
+            enrollmentStatus: 'ENROLLED',
+            enrollmentDate: new Date(),
+            updatedBy: userId,
+          },
+        });
+      }
+      
+      mainEnrollmentId = courseEnrollment.id;
+    }
+
     // Create cohort enrollment
     const cohortEnrollment = await prisma.cohortEnrollment.create({
       data: {
         cohortId: parseInt(id),
         candidateId: parseInt(candidateId),
-        enrollmentId: enrollmentId ? parseInt(enrollmentId) : null,
+        enrollmentId: mainEnrollmentId,
         status,
-        reviewedBy: status === 'APPROVED' ? userId : null,
-        approvalDate: status === 'APPROVED' ? new Date() : null,
+        reviewedBy: status === 'APPROVED' || status === 'ENROLLED' ? userId : null,
+        approvalDate: status === 'APPROVED' || status === 'ENROLLED' ? new Date() : null,
       },
       include: {
         candidate: {
@@ -447,6 +496,11 @@ const enrollStudent = async (req, res) => {
                 email: true,
               },
             },
+          },
+        },
+        enrollment: {
+          include: {
+            course: true,
           },
         },
       },
@@ -483,6 +537,14 @@ const updateEnrollmentStatus = async (req, res) => {
 
     const cohortEnrollment = await prisma.cohortEnrollment.findUnique({
       where: { id: parseInt(enrollmentId) },
+      include: {
+        cohort: {
+          include: {
+            course: true,
+          },
+        },
+        candidate: true,
+      },
     });
 
     if (!cohortEnrollment || cohortEnrollment.cohortId !== parseInt(id)) {
@@ -505,6 +567,45 @@ const updateEnrollmentStatus = async (req, res) => {
       updateData.withdrawalDate = new Date();
     }
 
+    // When status changes to ENROLLED, create or link the main Enrollment record
+    if (status === 'ENROLLED' && !cohortEnrollment.enrollmentId) {
+      // Check if candidate already has an enrollment for this course
+      let courseEnrollment = await prisma.enrollment.findFirst({
+        where: {
+          courseId: cohortEnrollment.cohort.courseId,
+          candidateId: cohortEnrollment.candidateId,
+        },
+      });
+
+      // If no enrollment exists, create one
+      if (!courseEnrollment) {
+        courseEnrollment = await prisma.enrollment.create({
+          data: {
+            tenantId: cohortEnrollment.cohort.tenantId,
+            courseId: cohortEnrollment.cohort.courseId,
+            candidateId: cohortEnrollment.candidateId,
+            enrollmentDate: new Date(),
+            enrollmentStatus: 'ENROLLED',
+            paymentStatus: 'PENDING',
+            createdBy: userId,
+          },
+        });
+      } else if (courseEnrollment.enrollmentStatus !== 'ENROLLED') {
+        // Update existing enrollment to ENROLLED status
+        courseEnrollment = await prisma.enrollment.update({
+          where: { id: courseEnrollment.id },
+          data: {
+            enrollmentStatus: 'ENROLLED',
+            enrollmentDate: new Date(),
+            updatedBy: userId,
+          },
+        });
+      }
+
+      // Link the enrollment to cohort enrollment
+      updateData.enrollmentId = courseEnrollment.id;
+    }
+
     const updated = await prisma.cohortEnrollment.update({
       where: { id: parseInt(enrollmentId) },
       data: updateData,
@@ -513,6 +614,11 @@ const updateEnrollmentStatus = async (req, res) => {
           select: {
             id: true,
             fullName: true,
+          },
+        },
+        enrollment: {
+          include: {
+            course: true,
           },
         },
       },

@@ -75,6 +75,7 @@ import {
   Area,
 } from 'recharts';
 import { useSelector } from 'react-redux';
+import { adminService } from '../../api/admin';
 import {
   demoDashboardStats,
   demoPlacementsOverTime,
@@ -107,84 +108,121 @@ const AdminDashboard = () => {
   const [systemHealth, setSystemHealth] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [error, setError] = useState(null);
 
-  // Mock admin data
+  // Fetch real dashboard data
   useEffect(() => {
-    setTimeout(() => {
-      const adminData = {
-        ...demoDashboardStats,
-        systemHealth: {
-          uptime: '99.9%',
-          responseTime: '142ms',
-          activeUsers: 1847,
-          serverLoad: 78,
-          memoryUsage: 65,
-          diskUsage: 45,
-          apiCalls: 125000,
-          errorRate: 0.1,
-        },
-        usersByRole: [
-          { role: 'Candidates', count: 1234, percentage: 67, color: theme.palette.primary.main },
-          { role: 'Trainers', count: 45, percentage: 2.4, color: theme.palette.success.main },
-          { role: 'Employers', count: 89, percentage: 4.8, color: theme.palette.warning.main },
-          { role: 'Brokers', count: 156, percentage: 8.5, color: theme.palette.secondary.main },
-          { role: 'Recruiters', count: 67, percentage: 3.6, color: theme.palette.info.main },
-          { role: 'Admins', count: 12, percentage: 0.7, color: theme.palette.grey[600] },
-        ],
-        financialMetrics: [
-          { month: 'Jul', revenue: 185000, expenses: 78000, profit: 107000 },
-          { month: 'Aug', revenue: 201000, expenses: 82000, profit: 119000 },
-          { month: 'Sep', revenue: 195000, expenses: 85000, profit: 110000 },
-          { month: 'Oct', revenue: 218000, expenses: 88000, profit: 130000 },
-          { month: 'Nov', revenue: 205000, expenses: 90000, profit: 115000 },
-          { month: 'Dec', revenue: 235000, expenses: 95000, profit: 140000 },
-        ],
-      };
-      setStats(adminData);
-      setSystemHealth(adminData.systemHealth);
-      setLoading(false);
-    }, 1000);
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await adminService.getDashboard();
+        
+        // Map API response to dashboard state
+        const apiData = response.data;
+        const adminData = {
+          ...apiData.data,
+          stats: apiData.data.stats,
+          recentCohorts: apiData.data.recentCohorts || [],
+          pendingEnrollments: apiData.data.pendingEnrollments || [],
+          systemHealth: {
+            uptime: '99.9%',
+            responseTime: '142ms',
+            activeUsers: apiData.data.stats.totalUsers || 0,
+            serverLoad: 78,
+            memoryUsage: 65,
+            diskUsage: 45,
+            apiCalls: 125000,
+            errorRate: 0.1,
+          },
+          usersByRole: [
+            { role: 'Candidates', count: apiData.data.stats.totalCandidates || 0, percentage: 67, color: theme.palette.primary.main },
+            { role: 'Trainers', count: apiData.data.stats.totalTrainers || 0, percentage: 2.4, color: theme.palette.success.main },
+            { role: 'Employers', count: 0, percentage: 4.8, color: theme.palette.warning.main },
+            { role: 'Brokers', count: 0, percentage: 8.5, color: theme.palette.secondary.main },
+            { role: 'Recruiters', count: 0, percentage: 3.6, color: theme.palette.info.main },
+            { role: 'Admins', count: 12, percentage: 0.7, color: theme.palette.grey[600] },
+          ],
+          financialMetrics: demoRevenueByMonth,
+        };
+        setStats(adminData);
+        setSystemHealth(adminData.systemHealth);
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+        setError(err.message || 'Failed to load dashboard data');
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
   }, [theme]);
+
+  const handleEnrollmentAction = async (enrollmentId, status) => {
+    try {
+      // Call the admin API to update enrollment status
+      await adminService.updateEnrollmentStatus(enrollmentId, { status });
+      
+      // Refresh dashboard data
+      const response = await adminService.getDashboard();
+      if (response.data) {
+        const apiData = response.data;
+        const adminData = {
+          ...apiData.data,
+          stats: apiData.data.stats,
+          recentCohorts: apiData.data.recentCohorts || [],
+          pendingEnrollments: apiData.data.pendingEnrollments || [],
+          systemHealth: stats.systemHealth,
+          usersByRole: stats.usersByRole,
+          financialMetrics: stats.financialMetrics,
+        };
+        setStats(adminData);
+      }
+    } catch (err) {
+      console.error('Failed to update enrollment status:', err);
+      setError(err.response?.data?.error || 'Failed to update enrollment status');
+    }
+  };
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
 
-  // Stats cards data
-  const statsCards = [
+  // Stats cards data - using real values from API
+  const statsCards = stats ? [
     {
       title: 'Total Users',
-      value: '2,847',
+      value: stats.stats?.totalUsers || 0,
       change: '+12.5%',
       trend: 'up',
       icon: UserGroupIcon,
       color: theme.palette.primary.main,
     },
     {
-      title: 'Active Programs',
-      value: '156',
+      title: 'Total Courses',
+      value: stats.stats?.totalCourses || 0,
       change: '+8.2%',
       trend: 'up',
       icon: AcademicCapIcon,
       color: theme.palette.success.main,
     },
     {
-      title: 'Partner Companies',
-      value: '89',
-      change: '+15.3%',
+      title: 'Total Cohorts',
+      value: stats.stats?.totalCohorts || 0,
+      change: `${stats.stats?.activeCohorts || 0} active`,
       trend: 'up',
       icon: BuildingOfficeIcon,
       color: theme.palette.warning.main,
     },
     {
-      title: 'Monthly Revenue',
-      value: '$235K',
-      change: '+23.1%',
+      title: 'Pending Enrollments',
+      value: stats.stats?.pendingCohortEnrollments || 0,
+      change: 'Awaiting approval',
       trend: 'up',
-      icon: CurrencyDollarIcon,
+      icon: ClockIcon,
       color: theme.palette.secondary.main,
     },
-  ];
+  ] : [];
 
   if (loading) {
     return (
@@ -198,6 +236,17 @@ const AdminDashboard = () => {
       >
         <CircularProgress size={64} />
       </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Alert severity="error">
+          <AlertTitle>Error Loading Dashboard</AlertTitle>
+          {error}
+        </Alert>
+      </Container>
     );
   }
 
@@ -390,6 +439,125 @@ const AdminDashboard = () => {
                     </Grid>
                   </CardContent>
                 </Card>
+
+                {/* Recent Cohorts */}
+                {stats.recentCohorts && stats.recentCohorts.length > 0 && (
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                        Recent Cohorts
+                      </Typography>
+                      <List>
+                        {stats.recentCohorts.map((cohort, index) => (
+                          <React.Fragment key={cohort.id}>
+                            <ListItem sx={{ px: 0 }}>
+                              <ListItemAvatar>
+                                <Avatar
+                                  sx={{
+                                    backgroundColor: theme.palette.primary.light,
+                                    color: theme.palette.primary.main,
+                                  }}
+                                >
+                                  <AcademicCapIcon style={{ width: 20, height: 20 }} />
+                                </Avatar>
+                              </ListItemAvatar>
+                              <ListItemText
+                                primary={
+                                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                    {cohort.name}
+                                  </Typography>
+                                }
+                                secondary={
+                                  <>
+                                    <Typography variant="body2" color="text.secondary">
+                                      {cohort.course?.name}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Trainer: {cohort.trainer?.user?.firstName} {cohort.trainer?.user?.lastName} • 
+                                      Enrollments: {cohort._count?.enrollments || 0} • 
+                                      Status: {cohort.status}
+                                    </Typography>
+                                  </>
+                                }
+                              />
+                            </ListItem>
+                            {index < stats.recentCohorts.length - 1 && <Divider />}
+                          </React.Fragment>
+                        ))}
+                      </List>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Pending Enrollments */}
+                {stats.pendingEnrollments && stats.pendingEnrollments.length > 0 && (
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                        Pending Enrollment Approvals
+                      </Typography>
+                      <List>
+                        {stats.pendingEnrollments.map((enrollment, index) => (
+                          <React.Fragment key={enrollment.id}>
+                            <ListItem 
+                              sx={{ px: 0 }}
+                              secondaryAction={
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    color="success"
+                                    onClick={() => handleEnrollmentAction(enrollment.id, 'APPROVED')}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="error"
+                                    onClick={() => handleEnrollmentAction(enrollment.id, 'REJECTED')}
+                                  >
+                                    Reject
+                                  </Button>
+                                </Box>
+                              }
+                            >
+                              <ListItemAvatar>
+                                <Avatar
+                                  sx={{
+                                    backgroundColor: theme.palette.warning.light,
+                                    color: theme.palette.warning.main,
+                                  }}
+                                >
+                                  <UserGroupIcon style={{ width: 20, height: 20 }} />
+                                </Avatar>
+                              </ListItemAvatar>
+                              <ListItemText
+                                primary={
+                                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                    {enrollment.candidate?.user?.firstName} {enrollment.candidate?.user?.lastName}
+                                  </Typography>
+                                }
+                                secondary={
+                                  <>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Cohort: {enrollment.cohort?.name}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Applied: {new Date(enrollment.enrolledAt).toLocaleDateString()} • 
+                                      Status: {enrollment.status}
+                                    </Typography>
+                                  </>
+                                }
+                              />
+                            </ListItem>
+                            {index < stats.pendingEnrollments.length - 1 && <Divider />}
+                          </React.Fragment>
+                        ))}
+                      </List>
+                    </CardContent>
+                  </Card>
+                )}
               </Stack>
             </Grid>
 

@@ -479,4 +479,54 @@ router.get('/attendance/appeals', appealController.getMyAppeals);
  */
 router.delete('/attendance/appeals/:appealId', appealController.cancelAppeal);
 
+/**
+ * @swagger
+ * /api/candidate/cohorts/available:
+ *   get:
+ *     summary: Get available cohorts for enrollment
+ *     tags: [Candidate]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Available cohorts retrieved successfully
+ */
+router.get('/cohorts/available', candidateController.getAvailableCohorts);
+
+/**
+ * @swagger
+ * /api/candidate/cohorts:
+ *   get:
+ *     summary: Get candidate's cohorts
+ *     tags: [Candidate]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Cohorts retrieved successfully
+ */
+router.get('/cohorts', candidateController.getMyCohorts);
+
+/**
+ * @swagger
+ * /api/candidate/cohorts/{cohortId}/apply:
+ *   post:
+ *     summary: Apply for a cohort
+ *     tags: [Candidate]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cohortId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Application submitted successfully
+ *       400:
+ *         description: Already applied or cohort full
+ */
+router.post('/cohorts/:cohortId/apply', candidateController.applyForCohort);
+
 module.exports = router;

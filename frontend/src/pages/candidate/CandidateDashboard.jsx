@@ -28,6 +28,7 @@ import {
   Person as PersonIcon,
   BookmarkBorder as BookmarkIcon,
   LocalLibrary as LibraryIcon,
+  Groups,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import useDashboard from '../../hooks/useDashboard';
@@ -86,6 +87,8 @@ const CandidateDashboard = () => {
   const currentCourses = data?.currentCourses || [];
   const courses = data?.courses || [];
   const upcomingEvents = data?.upcomingEvents || [];
+  const myCohorts = data?.myCohorts || [];
+  const availableCohorts = data?.availableCohorts || [];
   const profileCompletion = profile.completionRate || 0;
   
   console.log('👤 Profile data:', profile);
@@ -419,9 +422,18 @@ const CandidateDashboard = () => {
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <ModernStatCard
+                title="My Cohorts"
+                value={backendStats.activeCohorts || 0}
+                subtitle={`${backendStats.pendingCohortApplications || 0} pending approval`}
+                icon={Groups}
+                color="#2196F3"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <ModernStatCard
                 title="Completed"
                 value={statsCalculated.completedCourses}
-                subtitle="Courses finished"
+                subtitle={`${backendStats.completedCohorts || 0} cohorts finished`}
                 icon={CheckCircleIcon}
                 color="#4CAF50"
                 trend={statsCalculated.completedCourses > 0 ? '+2 this month' : null}
@@ -434,16 +446,6 @@ const CandidateDashboard = () => {
                 subtitle="Earned so far"
                 icon={TrophyIcon}
                 color="#FF9800"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <ModernStatCard
-                title="Attendance"
-                value={`${statsCalculated.avgAttendanceRate}%`}
-                subtitle="Average rate"
-                icon={CalendarIcon}
-                color="#9C27B0"
-                trend={statsCalculated.avgAttendanceRate >= 80 ? 'Excellent!' : null}
               />
             </Grid>
           </>
@@ -633,6 +635,164 @@ const CandidateDashboard = () => {
             </Paper>
           </Stack>
         </Grid>
+
+        {/* My Cohorts Section */}
+        {myCohorts.length > 0 && (
+          <Grid item xs={12} lg={6}>
+            <Paper sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+              <Box display="flex" justifyContent="space-between" alignments="center" mb={3}>
+                <Box>
+                  <Typography variant="h6" fontWeight={600} gutterBottom>
+                    My Cohorts
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Your enrolled cohort programs
+                  </Typography>
+                </Box>
+                <Button
+                  endIcon={<ArrowForwardIcon />}
+                  onClick={() => handleQuickAction('/candidate/cohorts')}
+                >
+                  View All
+                </Button>
+              </Box>
+              <Stack spacing={2}>
+                {myCohorts.slice(0, 3).map(cohort => (
+                  <Card
+                    key={cohort.id}
+                    sx={{
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        boxShadow: 2,
+                      }
+                    }}
+                  >
+                    <CardContent>
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="subtitle1" fontWeight={600}>
+                          {cohort.cohortName}
+                        </Typography>
+                        <Chip
+                          label={cohort.status}
+                          size="small"
+                          color={cohort.status === 'ENROLLED' ? 'success' : cohort.status === 'APPLIED' ? 'warning' : 'default'}
+                        />
+                      </Box>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        {cohort.course.title} • {cohort.cohortCode}
+                      </Typography>
+                      <Box display="flex" gap={2} mt={2}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">
+                            Trainer
+                          </Typography>
+                          <Typography variant="body2">
+                            {cohort.leadTrainer.firstName} {cohort.leadTrainer.lastName}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">
+                            Progress
+                          </Typography>
+                          <Typography variant="body2" fontWeight={600} color="primary.main">
+                            {cohort.progress || 0}%
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            </Paper>
+          </Grid>
+        )}
+
+        {/* Available Cohorts Section */}
+        {availableCohorts.length > 0 && (
+          <Grid item xs={12} lg={6}>
+            <Paper sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+                <Box>
+                  <Typography variant="h6" fontWeight={600} gutterBottom>
+                    Available Cohorts
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Open for enrollment
+                  </Typography>
+                </Box>
+              </Box>
+              <Stack spacing={2}>
+                {availableCohorts.slice(0, 2).map(cohort => (
+                  <Card
+                    key={cohort.id}
+                    sx={{
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        borderColor: 'success.main',
+                        boxShadow: 2,
+                      }
+                    }}
+                  >
+                    <CardContent>
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="subtitle1" fontWeight={600}>
+                          {cohort.cohortName}
+                        </Typography>
+                        <Chip
+                          label={`${cohort.spotsLeft} spots left`}
+                          size="small"
+                          color={cohort.spotsLeft < 5 ? 'error' : 'success'}
+                        />
+                      </Box>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        {cohort.course.title}
+                      </Typography>
+                      <Box display="flex" gap={2} mt={2}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">
+                            Start Date
+                          </Typography>
+                          <Typography variant="body2">
+                            {format(new Date(cohort.startDate), 'MMM dd, yyyy')}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">
+                            Deadline
+                          </Typography>
+                          <Typography variant="body2" color="error.main">
+                            {format(new Date(cohort.enrollmentDeadline), 'MMM dd')}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        size="small"
+                        sx={{ mt: 2 }}
+                        onClick={async () => {
+                          try {
+                            await candidateService.applyForCohort(cohort.id);
+                            refresh();
+                          } catch (err) {
+                            console.error('Apply error:', err);
+                          }
+                        }}
+                      >
+                        Apply Now
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            </Paper>
+          </Grid>
+        )}
       </Grid>
     </Box>
   );

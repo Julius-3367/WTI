@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cohorts View Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        h2 { color: #333; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .error { color: red; }
+        .success { color: green; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .status-draft { background: #e0e0e0; }
+        .status-open { background: #4caf50; color: white; }
+        .status-training { background: #2196f3; color: white; }
+        .status-completed { background: #9e9e9e; color: white; }
+    </style>
+</head>
+<body>
+    <h1>Cohorts Module Test</h1>
+    
+    <div class="section">
+        <h2>1. Login</h2>
+        <input type="email" id="email" placeholder="Email" value="admin@labourmobility.com" style="padding: 8px; width: 250px;">
+        <input type="password" id="password" placeholder="Password" value="admin123" style="padding: 8px; width: 150px;">
+        <button onclick="login()">Login</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Fetch Cohorts</h2>
+        <button onclick="fetchCohorts()">Get Cohorts</button>
+        <button onclick="fetchCohorts('ENROLLMENT_OPEN')">Get Open for Enrollment</button>
+        <button onclick="fetchCohorts('IN_TRAINING')">Get In Training</button>
+        <div id="cohortsResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. Cohorts Table</h2>
+        <div id="cohortsTable"></div>
+    </div>
+
+    <script>
+        let token = '';
+        const API_BASE = 'http://localhost:5000/api';
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.data.accessToken) {
+                    token = data.data.accessToken;
+                    resultDiv.innerHTML = `<p class="success">✓ Logged in as ${data.data.user.firstName} ${data.data.user.lastName}</p>`;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">Login failed: ${data.message || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function fetchCohorts(status = '') {
+            if (!token) {
+                alert('Please login first');
+                return;
+            }
+
+            const resultDiv = document.getElementById('cohortsResult');
+            const tableDiv = document.getElementById('cohortsTable');
+
+            try {
+                let url = `${API_BASE}/cohorts`;
+                if (status) {
+                    url += `?status=${status}`;
+                }
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const apiResponse = await response.json();
+
+                if (response.ok) {
+                    const data = apiResponse.data;
+                    const cohorts = data.cohorts || [];
+                    
+                    resultDiv.innerHTML = `<p class="success">✓ Found ${cohorts.length} cohorts (Total: ${data.total})</p>`;
+                    
+                    if (cohorts.length > 0) {
+                        let tableHTML = `
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Name</th>
+                                        <th>Course</th>
+                                        <th>Status</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Enrollments</th>
+                                        <th>Capacity</th>
+                                        <th>Lead Trainer</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                        `;
+
+                        cohorts.forEach(cohort => {
+                            const statusClass = cohort.status.toLowerCase().replace(/_/g, '-');
+                            tableHTML += `
+                                <tr>
+                                    <td>${cohort.cohortCode}</td>
+                                    <td>${cohort.cohortName}</td>
+                                    <td>${cohort.course?.title || 'N/A'}</td>
+                                    <td><span class="status-badge status-${statusClass}">${cohort.status}</span></td>
+                                    <td>${new Date(cohort.startDate).toLocaleDateString()}</td>
+                                    <td>${new Date(cohort.endDate).toLocaleDateString()}</td>
+                                    <td>${cohort._count?.enrollments || 0}</td>
+                                    <td>${cohort.maxCapacity}</td>
+                                    <td>${cohort.leadTrainer?.firstName || ''} ${cohort.leadTrainer?.lastName || ''}</td>
+                                </tr>
+                            `;
+                        });
+
+                        tableHTML += '</tbody></table>';
+                        tableDiv.innerHTML = tableHTML;
+                    } else {
+                        tableDiv.innerHTML = '<p>No cohorts found</p>';
+                    }
+                } else {
+                    resultDiv.innerHTML = `<p class="error">Failed: ${apiResponse.message || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

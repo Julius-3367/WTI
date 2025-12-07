@@ -152,6 +152,26 @@ export const candidateService = {
     const res = await api.get('/candidate/placement');
     return unwrap(res);
   },
+
+  // COHORT ENDPOINTS
+
+  // Get available cohorts for enrollment
+  async getAvailableCohorts() {
+    const res = await api.get('/candidate/cohorts/available');
+    return unwrap(res);
+  },
+
+  // Get my cohorts
+  async getMyCohorts() {
+    const res = await api.get('/candidate/cohorts');
+    return unwrap(res);
+  },
+
+  // Apply for a cohort
+  async applyForCohort(cohortId) {
+    const res = await api.post(`/candidate/cohorts/${cohortId}/apply`);
+    return unwrap(res);
+  },
 };
 
 export default candidateService;

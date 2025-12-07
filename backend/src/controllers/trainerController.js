@@ -5,9 +5,92 @@ const prisma = require('../config/database');
  */
 const getDashboard = async (req, res) => {
   try {
-    const trainerId = req.user.id;
+    const userId = req.user.id;
 
-    // Get courses where trainer is assigned (trainers is JSON array)
+    // Get cohorts where this user is the lead trainer (using userId directly)
+    const cohorts = await prisma.cohort.findMany({
+      where: {
+        leadTrainerId: userId,
+      },
+      include: {
+        course: {
+          select: {
+            id: true,
+            title: true,
+            code: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: true,
+            sessions: true,
+          },
+        },
+      },
+      orderBy: { startDate: 'desc' },
+    });
+
+    const cohortIds = cohorts.map(c => c.id);
+
+    // Get cohort enrollments for these cohorts
+    const cohortEnrollments = await prisma.cohortEnrollment.findMany({
+      where: {
+        cohortId: { in: cohortIds },
+      },
+      include: {
+        candidate: {
+          select: {
+            id: true,
+            fullName: true,
+            user: {
+              select: {
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+        cohort: {
+          select: {
+            cohortName: true,
+            cohortCode: true,
+          },
+        },
+      },
+      orderBy: { applicationDate: 'desc' },
+      take: 10,
+    });
+
+    // Get upcoming sessions
+    const upcomingSessions = await prisma.cohortSession.findMany({
+      where: {
+        cohortId: { in: cohortIds },
+        sessionDate: {
+          gte: new Date(),
+        },
+        status: {
+          in: ['SCHEDULED', 'IN_PROGRESS'],
+        },
+      },
+      include: {
+        cohort: {
+          select: {
+            cohortName: true,
+            cohortCode: true,
+            course: {
+              select: {
+                title: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { sessionDate: 'asc' },
+      take: 5,
+    });
+
+    // Get courses where trainer is assigned (legacy support)
     const allCourses = await prisma.course.findMany({
       where: {
         status: 'ACTIVE',
@@ -17,7 +100,7 @@ const getDashboard = async (req, res) => {
     // Filter courses where trainer ID is in trainers array
     const trainerCourses = allCourses.filter(course => {
       if (course.trainers && Array.isArray(course.trainers)) {
-        return course.trainers.includes(trainerId);
+        return course.trainers.includes(userId);
       }
       return false;
     });
@@ -72,6 +155,12 @@ const getDashboard = async (req, res) => {
     // Calculate unique students
     const uniqueStudents = new Set(enrollments.map(e => e.candidateId));
     const totalStudents = uniqueStudents.size;
+
+    // Get cohort stats
+    const activeCohorts = cohorts.filter(c => c.status === 'IN_TRAINING' || c.status === 'ENROLLMENT_OPEN').length;
+    const completedCohorts = cohorts.filter(c => c.status === 'COMPLETED').length;
+    const totalCohortStudents = cohortEnrollments.filter(e => e.status === 'ENROLLED').length;
+    const pendingApprovals = cohortEnrollments.filter(e => e.status === 'APPLIED').length;
 
     // Get recent enrollments
     const recentEnrollments = await prisma.enrollment.findMany({
@@ -141,10 +230,30 @@ const getDashboard = async (req, res) => {
           completionRate: activeEnrollments > 0 
             ? ((completedEnrollments / (activeEnrollments + completedEnrollments)) * 100).toFixed(1)
             : 0,
+          // Cohort stats
+          totalCohorts: cohorts.length,
+          activeCohorts,
+          completedCohorts,
+          totalCohortStudents,
+          pendingApprovals,
         },
         courses: trainerCourses,
+        cohorts: cohorts.map(c => ({
+          id: c.id,
+          cohortName: c.cohortName,
+          cohortCode: c.cohortCode,
+          course: c.course,
+          status: c.status,
+          startDate: c.startDate,
+          endDate: c.endDate,
+          studentsCount: c._count.enrollments,
+          sessionsCount: c._count.sessions,
+          maxCapacity: c.maxCapacity,
+        })),
         recentEnrollments,
+        cohortEnrollments,
         upcomingAssessments,
+        upcomingSessions,
       },
     });
   } catch (error) {
@@ -664,11 +773,11 @@ const getCourseAttendance = async (req, res) => {
  */
 const getMyCohorts = async (req, res) => {
   try {
-    const trainerId = req.user.id;
+    const userId = req.user.id;
     const { status, page = 1, limit = 20 } = req.query;
 
     const where = {
-      leadTrainerId: trainerId,
+      leadTrainerId: userId,
     };
 
     if (status) {
