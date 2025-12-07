@@ -1,5 +1,6 @@
 require('dotenv').config();
 const app = require('./src/app');
+const CohortJobs = require('./src/jobs/cohortLifecycleJob');
 
 const PORT = process.env.PORT || 5000;
 
@@ -14,6 +15,10 @@ const server = app.listen(PORT, () => {
 📚 API Documentation: http://localhost:${PORT}/api-docs
 🔍 Health Check: http://localhost:${PORT}/health
   `);
+  
+  // Initialize cron jobs
+  CohortJobs.initializeJobs();
+  console.log('⏰ Cohort automation jobs initialized');
 });
 
 // Handle unhandled promise rejections

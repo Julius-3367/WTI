@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const cohortService = require('../services/cohortService');
+const cohortAutomationService = require('../services/cohortAutomationService');
 
 /**
  * Create a new cohort
@@ -405,19 +406,12 @@ const enrollStudent = async (req, res) => {
       });
     }
 
-    // Check if cohort is accepting enrollments
-    if (cohort.status !== 'ENROLLMENT_OPEN' && cohort.status !== 'PUBLISHED') {
+    // Use automation service to check if enrollment is allowed
+    const canEnrollCheck = await cohortAutomationService.canEnroll(parseInt(id));
+    if (!canEnrollCheck.canEnroll && status === 'ENROLLED') {
       return res.status(400).json({
         success: false,
-        message: 'Cohort is not accepting enrollments',
-      });
-    }
-
-    // Check if cohort is full
-    if (cohortService.isCohortFull(cohort) && status === 'ENROLLED') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cohort is full',
+        message: canEnrollCheck.reason,
       });
     }
 
@@ -508,7 +502,8 @@ const enrollStudent = async (req, res) => {
 
     // Update cohort enrollment count if status is ENROLLED
     if (status === 'ENROLLED') {
-      await cohortService.updateCohortEnrollmentMetrics(parseInt(id));
+      await cohortAutomationService.incrementEnrollmentCount(parseInt(id));
+      await cohortAutomationService.updateCohortMetrics(parseInt(id));
     }
 
     res.status(201).json({
@@ -624,8 +619,29 @@ const updateEnrollmentStatus = async (req, res) => {
       },
     });
 
-    // Update cohort enrollment count
-    await cohortService.updateCohortEnrollmentMetrics(parseInt(id));
+    // Handle enrollment count changes
+    const oldStatus = cohortEnrollment.status;
+    const newStatus = status;
+
+    if (oldStatus !== 'ENROLLED' && newStatus === 'ENROLLED') {
+      // Student moved to ENROLLED - increment count
+      await cohortAutomationService.incrementEnrollmentCount(parseInt(id));
+    } else if (oldStatus === 'ENROLLED' && newStatus !== 'ENROLLED') {
+      // Student left ENROLLED status - decrement count
+      await cohortAutomationService.decrementEnrollmentCount(parseInt(id));
+    }
+
+    // Sync status with main enrollment
+    await cohortAutomationService.syncEnrollmentStatus(parseInt(enrollmentId));
+
+    // Update cohort metrics
+    await cohortAutomationService.updateCohortMetrics(parseInt(id));
+
+    // Check if student completed and ready for certificate
+    if (newStatus === 'COMPLETED') {
+      await cohortAutomationService.checkAndIssueCertificate(parseInt(enrollmentId));
+      await cohortAutomationService.checkPlacementReadiness(parseInt(enrollmentId));
+    }
 
     res.json({
       success: true,
