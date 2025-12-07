@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Card,
@@ -26,12 +27,14 @@ import {
   Google as GoogleIcon,
 } from '@mui/icons-material';
 import { loginUser } from '../../features/auth/authThunks';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 /**
  * Login page component
  * Handles user authentication with email/password
  */
 const Login = () => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -209,6 +212,11 @@ const Login = () => {
           >
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
+            {/* Language Switcher - Top Right */}
+            <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+              <LanguageSwitcher />
+            </Box>
+            
             <BusinessIcon
               sx={{
                 fontSize: 48,
@@ -238,14 +246,14 @@ const Login = () => {
                 mt: 1,
               }}
             >
-              Welcome Back
+              {t('common.welcome')}
             </Typography>
             <Typography
               variant="body1"
               color="text.secondary"
               sx={{ maxWidth: 320, mx: 'auto' }}
             >
-              Sign in to continue to UMSL Platform.
+              {t('auth.signInTitle')}
             </Typography>
           </Box>
 
@@ -273,7 +281,7 @@ const Login = () => {
           >
             <TextField
               fullWidth
-              label="Email Address"
+              label={t('common.email')}
               name="email"
               type="email"
               value={formData.email}
@@ -294,7 +302,7 @@ const Login = () => {
 
             <TextField
               fullWidth
-              label="Password"
+              label={t('common.password')}
               name="password"
               type={showPassword ? 'text' : 'password'}
               value={formData.password}
@@ -336,7 +344,7 @@ const Login = () => {
                   '&:hover': { color: 'secondary.dark' },
                 }}
               >
-                Forgot password?
+                {t('auth.forgotPassword')}
               </Link>
             </Box>
 
@@ -363,7 +371,7 @@ const Login = () => {
               {status === 'loading' ? (
                 <CircularProgress size={24} color="inherit" />
               ) : (
-                'Login'
+                t('auth.signIn')
               )}
             </Button>
 
@@ -442,9 +450,9 @@ const Login = () => {
           {/* Footer Links */}
           <Box sx={{ textAlign: 'center', mt: 3 }}>
             <Typography variant="body2" color="text.secondary">
-              Don't have an account?{' '}
+              {t('auth.noAccount')}{' '}
               <Link href="/register" underline="hover">
-                Sign Up
+                {t('auth.signUp')}
               </Link>
             </Typography>
           </Box>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Card,
@@ -49,6 +50,7 @@ import { useSnackbar } from 'notistack';
 import adminService from '../../api/admin';
 
 const Enrollments = () => {
+  const { t } = useTranslation();
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -192,10 +194,10 @@ const Enrollments = () => {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <div>
           <Typography variant="h4" gutterBottom>
-            Enrollment Management
+            {t('enrollments.title')}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Review and manage all course enrollments and applications
+            {t('admin.approveEnrollments')}
           </Typography>
         </div>
         <Button
@@ -278,7 +280,7 @@ const Enrollments = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                placeholder="Search by candidate, course, or code..."
+                placeholder={t('courses.searchCourses')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -324,12 +326,12 @@ const Enrollments = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Candidate</TableCell>
-                    <TableCell>Course</TableCell>
-                    <TableCell>Applied Date</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Payment</TableCell>
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell>{t('enrollments.candidateName')}</TableCell>
+                    <TableCell>{t('enrollments.courseName')}</TableCell>
+                    <TableCell>{t('enrollments.enrollmentDate')}</TableCell>
+                    <TableCell>{t('common.status')}</TableCell>
+                    <TableCell>{t('enrollments.paymentStatus')}</TableCell>
+                    <TableCell align="right">{t('common.actions')}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -338,12 +340,12 @@ const Enrollments = () => {
                       <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
                         <SchoolIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
                         <Typography variant="h6" color="text.secondary" gutterBottom>
-                          No enrollments found
+                          {t('enrollments.noEnrollments')}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {enrollments.length === 0
-                            ? 'There are no enrollments in the system yet.'
-                            : 'Try adjusting your search or filter criteria.'}
+                            ? t('messages.noData')
+                            : t('courses.searchCourses')}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -389,7 +391,7 @@ const Enrollments = () => {
                             />
                           </TableCell>
                           <TableCell align="right">
-                            <Tooltip title="View Details">
+                            <Tooltip title={t('enrollments.viewDetails')}>
                               <IconButton 
                                 size="small"
                                 onClick={() => {
@@ -402,7 +404,7 @@ const Enrollments = () => {
                             </Tooltip>
                             {enrollment.enrollmentStatus === 'APPLIED' && (
                               <>
-                                <Tooltip title="Approve">
+                                <Tooltip title={t('enrollments.approve')}>
                                   <IconButton
                                     size="small"
                                     color="success"
@@ -411,7 +413,7 @@ const Enrollments = () => {
                                     <ApproveIcon />
                                   </IconButton>
                                 </Tooltip>
-                                <Tooltip title="Reject">
+                                <Tooltip title={t('enrollments.reject')}>
                                   <IconButton
                                     size="small"
                                     color="error"
@@ -448,7 +450,7 @@ const Enrollments = () => {
       {/* View Details Dialog */}
       <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
-          Enrollment Details
+          {t('enrollments.enrollmentDetails')}
         </DialogTitle>
         <DialogContent>
           {selectedEnrollment && (
@@ -457,56 +459,56 @@ const Enrollments = () => {
                 {/* Candidate Information */}
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom color="primary">
-                    Candidate Information
+                    {t('enrollments.candidateInfo')}
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">Full Name</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('common.fullName')}</Typography>
                   <Typography variant="body1">{selectedEnrollment.candidate?.fullName || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">Email</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('common.email')}</Typography>
                   <Typography variant="body1">{selectedEnrollment.candidate?.email || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">Phone</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('common.phoneNumber')}</Typography>
                   <Typography variant="body1">{selectedEnrollment.candidate?.phoneNumber || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">ID Number</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('common.idNumber')}</Typography>
                   <Typography variant="body1">{selectedEnrollment.candidate?.idNumber || 'N/A'}</Typography>
                 </Grid>
 
                 {/* Course Information */}
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 2 }}>
-                    Course Information
+                    {t('enrollments.courseInfo')}
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant="body2" color="text.secondary">Course Title</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('courses.courseTitle')}</Typography>
                   <Typography variant="body1">{selectedEnrollment.course?.title || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">Course Code</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('courses.courseCode')}</Typography>
                   <Typography variant="body1">{selectedEnrollment.course?.courseCode || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">Duration</Typography>
-                  <Typography variant="body1">{selectedEnrollment.course?.durationDays ? `${selectedEnrollment.course.durationDays} days` : 'N/A'}</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('courses.duration')}</Typography>
+                  <Typography variant="body1">{selectedEnrollment.course?.durationDays ? `${selectedEnrollment.course.durationDays} ${t('courses.durationDays')}` : 'N/A'}</Typography>
                 </Grid>
 
                 {/* Enrollment Details */}
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 2 }}>
-                    Enrollment Details
+                    {t('enrollments.enrollmentDetails')}
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">Enrollment Date</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('enrollments.enrollmentDate')}</Typography>
                   <Typography variant="body1">
                     {selectedEnrollment.enrollmentDate 
                       ? new Date(selectedEnrollment.enrollmentDate).toLocaleDateString() 
@@ -514,7 +516,7 @@ const Enrollments = () => {
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">Status</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('common.status')}</Typography>
                   <Chip
                     label={selectedEnrollment.enrollmentStatus}
                     color={
@@ -526,7 +528,7 @@ const Enrollments = () => {
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">Payment Status</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('enrollments.paymentStatus')}</Typography>
                   <Chip
                     label={selectedEnrollment.paymentStatus || 'PENDING'}
                     color={selectedEnrollment.paymentStatus === 'PAID' ? 'success' : 'warning'}
@@ -535,12 +537,12 @@ const Enrollments = () => {
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" color="text.secondary">Certificate Issued</Typography>
-                  <Typography variant="body1">{selectedEnrollment.certificateIssued ? 'Yes' : 'No'}</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('certificates.title')}</Typography>
+                  <Typography variant="body1">{selectedEnrollment.certificateIssued ? t('common.yes') : t('common.no')}</Typography>
                 </Grid>
                 {selectedEnrollment.remarks && (
                   <Grid item xs={12}>
-                    <Typography variant="body2" color="text.secondary">Remarks</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('common.remarks')}</Typography>
                     <Typography variant="body1">{selectedEnrollment.remarks}</Typography>
                   </Grid>
                 )}
@@ -549,43 +551,43 @@ const Enrollments = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
+          <Button onClick={() => setViewDialogOpen(false)}>{t('common.close')}</Button>
         </DialogActions>
       </Dialog>
 
       {/* Action Dialog */}
       <Dialog open={actionDialogOpen} onClose={() => setActionDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {action === 'ENROLLED' ? 'Approve Enrollment' : 'Reject Enrollment'}
+          {action === 'ENROLLED' ? t('enrollments.approve') : t('enrollments.reject')} {t('enrollments.title')}
         </DialogTitle>
         <DialogContent>
           {selectedEnrollment && (
             <Box mt={2}>
               <Alert severity={action === 'ENROLLED' ? 'info' : 'warning'} sx={{ mb: 2 }}>
                 {action === 'ENROLLED'
-                  ? `Approving ${selectedEnrollment.candidate?.fullName} for ${selectedEnrollment.course?.title}`
-                  : `Rejecting ${selectedEnrollment.candidate?.fullName}'s application for ${selectedEnrollment.course?.title}`}
+                  ? `${t('enrollments.approve')} ${selectedEnrollment.candidate?.fullName} - ${selectedEnrollment.course?.title}`
+                  : `${t('enrollments.reject')} ${selectedEnrollment.candidate?.fullName} - ${selectedEnrollment.course?.title}`}
               </Alert>
               <TextField
-                label="Remarks (Optional)"
+                label={t('common.remarks')}
                 fullWidth
                 multiline
                 rows={3}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
-                placeholder="Add notes about this decision..."
+                placeholder={t('common.remarks')}
               />
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setActionDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setActionDialogOpen(false)}>{t('common.cancel')}</Button>
           <Button
             variant="contained"
             color={action === 'ENROLLED' ? 'success' : 'error'}
             onClick={handleAction}
           >
-            Confirm {action === 'ENROLLED' ? 'Approval' : 'Rejection'}
+            {t('common.confirm')} {action === 'ENROLLED' ? t('enrollments.approve') : t('enrollments.reject')}
           </Button>
         </DialogActions>
       </Dialog>
